@@ -1,0 +1,69 @@
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at https://mozilla.org/MPL/2.0/. -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="theme-color" content="#7e2553" />
+    <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="manifest" href="manifest.json" />
+    <title>Scroll & Sigil</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #000000;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" style="display: none"></canvas>
+    <button id="mobile" style="display: none">Run game</button>
+    <p id="loading" style="display: none">Loading. Please wait...</p>
+    <script type="module">
+      if ('serviceWorker' in navigator) navigator.serviceWorker.register('service.js')
+      let mobile = document.getElementById('mobile')
+      let loading = document.getElementById('loading')
+      if ('ontouchstart' in window) {
+        mobile.style.display = 'flex'
+        mobile.style.fontFamily = 'monospace'
+        mobile.style.fontSize = '1.8rem'
+        mobile.style.fontWeight = 'bold'
+        mobile.style.color = '#fff1e8'
+        mobile.style.backgroundColor = '#ff004d'
+        mobile.style.border = 'none'
+        mobile.style.borderRadius = '6px'
+        mobile.style.outline = 'none'
+        mobile.style.padding = '0.4em 0.8em'
+        mobile.ontouchstart = (event) => {
+          event.preventDefault()
+          mobile.remove()
+          loading.style.display = 'flex'
+          loading.style.fontFamily = 'monospace'
+          loading.style.fontSize = '3vh'
+          loading.style.fontWeight = 'bold'
+          loading.style.color = '#fff1e8'
+          import('./src/index.js')
+        }
+      } else {
+        mobile.remove()
+        loading.style.display = 'flex'
+        loading.style.fontFamily = 'monospace'
+        loading.style.fontSize = '1.8rem'
+        loading.style.fontWeight = 'bold'
+        loading.style.color = '#fff1e8'
+        import('./src/index.js')
+      }
+    </script>
+  </body>
+</html>
