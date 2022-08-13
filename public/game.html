@@ -8,7 +8,6 @@
     <meta charset="utf-8" />
     <meta name="theme-color" content="#7e2553" />
     <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link rel="manifest" href="manifest.json" />
     <title>Scroll & Sigil</title>
     <style>
       html,
@@ -31,7 +30,6 @@
     <button id="mobile" style="display: none">Run game</button>
     <p id="loading" style="display: none">Loading. Please wait...</p>
     <script type="module">
-      if ('serviceWorker' in navigator) navigator.serviceWorker.register('service.js')
       let mobile = document.getElementById('mobile')
       let loading = document.getElementById('loading')
       if ('ontouchstart' in window) {
@@ -53,7 +51,7 @@
           loading.style.fontSize = '3vh'
           loading.style.fontWeight = 'bold'
           loading.style.color = '#fff1e8'
-          import('./src/index.js')
+          import('./src/game.js')
         }
       } else {
         mobile.remove()
@@ -62,7 +60,7 @@
         loading.style.fontSize = '1.8rem'
         loading.style.fontWeight = 'bold'
         loading.style.color = '#fff1e8'
-        import('./src/index.js')
+        import('./src/game.js')
       }
     </script>
   </body>

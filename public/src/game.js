@@ -2,28 +2,16 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import { Client } from './client/client.js'
-import { usingKeyboardMouse, usingPlayStation } from './io/input.js'
-
-function newCanvas(width, height) {
-  const canvas = document.getElementById('canvas')
-  canvas.style.display = 'block'
-  canvas.style.position = 'absolute'
-  canvas.style.left = '0'
-  canvas.style.right = '0'
-  canvas.style.top = '0'
-  canvas.style.bottom = '0'
-  canvas.style.margin = 'auto'
-  canvas.width = width
-  canvas.height = height
-  if ('ontouchstart' in window) canvas.requestFullscreen()
-  return canvas
-}
+import { Client } from './client.js'
+import { usingKeyboardMouse, usingPlayStation } from './input.js'
+import { Socket } from './net.js'
 
 let active = true
 let client = null
 
 const touches = []
+
+let previous = 0
 
 function touchIndexById(identifier) {
   for (let i = 0; i < touches.length; i++) {
@@ -32,23 +20,57 @@ function touchIndexById(identifier) {
   return -1
 }
 
-let previous = 0
-
-function tick(timestamp) {
-  if (active && timestamp - previous >= 15.999) {
-    previous = timestamp
-    client.update(timestamp)
+function tick(time) {
+  if (active && time - previous >= 15.999) {
+    previous = time
+    client.update(time)
     client.render()
   }
   window.requestAnimationFrame(tick)
 }
 
 async function main() {
-  const canvas = newCanvas(window.innerWidth, window.innerHeight)
-  const context = canvas.getContext('2d', { antialias: false })
+  const canvas = document.getElementById('canvas')
+  canvas.style.display = 'block'
+  canvas.style.position = 'absolute'
+  canvas.style.left = '0'
+  canvas.style.right = '0'
+  canvas.style.top = '0'
+  canvas.style.bottom = '0'
+  canvas.style.margin = 'auto'
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  if ('ontouchstart' in window) canvas.requestFullscreen()
+
+  const context = canvas.getContext('2d')
+  context.imageSmoothingEnabled = false
+
+  let SocketConnection = null
+  let SocketQueue = []
+  let SocketSend = new DataView(new ArrayBuffer(128))
+  let SocketSendIndex = 1
+  let SocketSendSet = new Map()
+
+  SocketConnection = await Socket('websocket')
+  SocketConnection.binaryType = 'arraybuffer'
+
+  SocketConnection.onclose = function () {
+    SocketConnection = null
+    self.on = false
+    throw new Error('Lost connection to server')
+  }
+
+  let raw = await new Promise(function (resolve) {
+    SocketConnection.onmessage = function (event) {
+      resolve(event.data)
+    }
+  })
+
+  SocketConnection.onmessage = function (event) {
+    SocketQueue.push(event.data)
+  }
 
   client = new Client(canvas, context)
-
   await client.initialize()
 
   document.getElementById('loading').remove()
