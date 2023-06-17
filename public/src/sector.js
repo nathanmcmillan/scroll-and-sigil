@@ -1,23 +1,17 @@
-const thing = require('./thing')
+import { IMAGES } from './images.js'
+import { Player } from './player.js'
 
-const TILES = 16
+export const TILES = 16
 
-class Sector {
-  constructor(name, data) {
-    data = JSON.parse(data)
-    this.name = name
+export class Sector {
+  constructor(data) {
+    this.name = data.name
     this.leftName = data.left
     this.rightName = data.right
     this.upName = data.up
     this.downName = data.down
-    this.tiles = new Array(TILES * TILES)
-    for (let r = 0; r < TILES; r++) {
-      for (let c = 0; c < TILES; c++) {
-        this.tiles[c + r * TILES] = data.tiles[r][c]
-      }
-    }
+    this.tiles = data.tiles
     this.music = data.music
-    this.origin = data.origin
     this.left = null
     this.right = null
     this.up = null
@@ -26,40 +20,15 @@ class Sector {
     this.thingCount = 0
     this.missiles = []
     this.missileCount = 0
+
+    const players = data.players
     this.players = []
-    this.playerCount = 0
-    for (let t = 0; t < data.things; t++) {
-      const th = data.things[t]
-      this.addThing(new thing.Thing(this, th))
+    this.playerCount = players.length
+    for (let p = 0; p < players.length; p++) {
+      this.players.push(new Player(this, data.players[p]))
     }
-  }
 
-  data() {
-    const players = []
-    let p = this.playerCount
-    while (p--) {
-      players.push(this.players[p].data())
-    }
-    const things = []
-    let t = this.thingCount
-    while (t--) {
-      things.push(this.things[t].data())
-    }
-    return {
-      name: this.name,
-      left: this.leftName,
-      right: this.rightName,
-      up: this.upName,
-      down: this.downName,
-      tiles: this.tiles,
-      music: this.music,
-      players: players,
-      things: things,
-    }
-  }
-
-  snapshot() {
-    return null
+    this.image = IMAGES.get('environment')
   }
 
   update() {
@@ -132,9 +101,4 @@ class Sector {
     players[index] = players[this.playerCount]
     players[this.playerCount] = null
   }
-}
-
-module.exports = {
-  TILES: TILES,
-  Sector: Sector,
 }

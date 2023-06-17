@@ -2,29 +2,25 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import { Client } from './client.js'
-import { usingKeyboardMouse, usingPlayStation } from './input.js'
-import { Socket } from './net.js'
+import * as client from './client.js'
 
-let active = true
-let client = null
+const TOUCH = []
 
-const touches = []
-
-let previous = 0
+let ACTIVE = true
+let PREVIOUS_TICK = 0
 
 function touchIndexById(identifier) {
-  for (let i = 0; i < touches.length; i++) {
-    if (touches[i].identifier === identifier) return i
+  for (let i = 0; i < TOUCH.length; i++) {
+    if (TOUCH[i].identifier === identifier) return i
   }
   return -1
 }
 
 function tick(time) {
-  if (active && time - previous >= 15.999) {
-    previous = time
+  if (ACTIVE && time - PREVIOUS_TICK >= 15.999) {
+    PREVIOUS_TICK = time
     client.update(time)
-    client.render()
+    client.draw()
   }
   window.requestAnimationFrame(tick)
 }
@@ -45,33 +41,7 @@ async function main() {
   const context = canvas.getContext('2d')
   context.imageSmoothingEnabled = false
 
-  let SocketConnection = null
-  let SocketQueue = []
-  let SocketSend = new DataView(new ArrayBuffer(128))
-  let SocketSendIndex = 1
-  let SocketSendSet = new Map()
-
-  SocketConnection = await Socket('websocket')
-  SocketConnection.binaryType = 'arraybuffer'
-
-  SocketConnection.onclose = function () {
-    SocketConnection = null
-    self.on = false
-    throw new Error('Lost connection to server')
-  }
-
-  let raw = await new Promise(function (resolve) {
-    SocketConnection.onmessage = function (event) {
-      resolve(event.data)
-    }
-  })
-
-  SocketConnection.onmessage = function (event) {
-    SocketQueue.push(event.data)
-  }
-
-  client = new Client(canvas, context)
-  await client.initialize()
+  await client.init(canvas, context)
 
   document.getElementById('loading').remove()
 
@@ -106,8 +76,8 @@ async function main() {
       const changed = event.changedTouches
       for (let i = 0; i < changed.length; i++) {
         const touch = changed[i]
-        const content = { identifier: touch.identifier, pageX: touch.pageX, pageY: client.height - touch.pageY }
-        touches.push(content)
+        const content = { identifier: touch.identifier, pageX: touch.pageX, pageY: canvas.height - touch.pageY }
+        TOUCH.push(content)
         client.touchStart(content)
       }
     }
@@ -117,7 +87,7 @@ async function main() {
       const changed = event.changedTouches
       for (let i = 0; i < changed.length; i++) {
         const touch = changed[i]
-        const content = { identifier: touch.identifier, pageX: touch.pageX, pageY: client.height - touch.pageY }
+        const content = { identifier: touch.identifier, pageX: touch.pageX, pageY: canvas.height - touch.pageY }
         client.touchMove(content)
       }
     }
@@ -129,7 +99,7 @@ async function main() {
         const touch = changed[i]
         const index = touchIndexById(touch.identifier)
         if (index >= 0) {
-          const start = touches.splice(index, 1)[0]
+          const start = TOUCH.splice(index, 1)[0]
           client.touchEnd(start)
         }
       }
@@ -141,7 +111,7 @@ async function main() {
       for (let i = 0; i < changed.length; i++) {
         const touch = changed[i]
         const index = touchIndexById(touch.identifier)
-        if (index >= 0) touches.splice(index, 1)
+        if (index >= 0) TOUCH.splice(index, 1)
       }
     }
   }
@@ -153,32 +123,32 @@ async function main() {
       console.warning('controller does not have enough buttons or axes')
       return
     }
-    usingPlayStation(client.input)
-    client.controllers.push(controller)
+    client.INPUT.usingPlayStation()
+    client.CONTROLLERS.push(controller)
   })
 
   window.addEventListener('gamepaddisconnected', (event) => {
     const controller = event.gamepad
     console.log('controller disconnected: %d', controller.index)
-    const array = client.controllers
+    const array = client.CONTROLLERS
     for (let c = 0; c < array.length; c++) {
       if (array[c].index === controller.index) array.splice(c, 1)
     }
-    if (client.controllers.length === 0) usingKeyboardMouse(client.input)
+    if (client.CONTROLLERS.length === 0) client.INPUT.usingKeyboardMouse()
   })
 
   window.onresize = () => {
     client.resize(window.innerWidth, window.innerHeight)
-    if (!active) client.render()
+    if (!ACTIVE) client.draw()
   }
 
   window.onblur = () => {
-    active = false
+    ACTIVE = false
     client.pause()
   }
 
   window.onfocus = () => {
-    active = true
+    ACTIVE = true
     client.resume()
   }
 

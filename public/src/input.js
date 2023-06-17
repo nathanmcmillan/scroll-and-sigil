@@ -22,62 +22,11 @@ export const INPUT_RATE = 128
 
 const BUTTONS = 12
 
-const DOUBLE_RATE = 64
-
-export function usingKeyboardMouse(input) {
-  const names = input.names
-  names[BUTTON_START] = 'ENTER'
-  names[BUTTON_SELECT] = 'SPACE'
-  names[STICK_UP] = 'W'
-  names[STICK_DOWN] = 'S'
-  names[STICK_LEFT] = 'A'
-  names[STICK_RIGHT] = 'D'
-  names[BUTTON_X] = 'I'
-  names[BUTTON_Y] = 'J'
-  names[BUTTON_A] = 'L'
-  names[BUTTON_B] = 'K'
-  names[LEFT_TRIGGER] = 'Q'
-  names[RIGHT_TRIGGER] = 'O'
-}
-
-export function usingXbox(input) {
-  const names = input.names
-  names[BUTTON_START] = 'START'
-  names[BUTTON_SELECT] = 'SPACE'
-  names[STICK_UP] = 'LEFT STICK UP'
-  names[STICK_DOWN] = 'LEFT STICK DOWN'
-  names[STICK_LEFT] = 'LEFT STICK LEFT'
-  names[STICK_RIGHT] = 'LEFT STICK RIGHT'
-  names[BUTTON_X] = 'A'
-  names[BUTTON_Y] = 'B'
-  names[BUTTON_A] = 'X'
-  names[BUTTON_B] = 'Y'
-  names[LEFT_TRIGGER] = 'LEFT TRIGGER'
-  names[RIGHT_TRIGGER] = 'RIGHT TRIGGER'
-}
-
-export function usingPlayStation(input) {
-  const names = input.names
-  names[BUTTON_START] = 'START'
-  names[BUTTON_SELECT] = 'SPACE'
-  names[STICK_UP] = 'LEFT STICK UP'
-  names[STICK_DOWN] = 'LEFT STICK DOWN'
-  names[STICK_LEFT] = 'LEFT STICK LEFT'
-  names[STICK_RIGHT] = 'LEFT STICK RIGHT'
-  names[BUTTON_X] = 'X'
-  names[BUTTON_Y] = 'Square'
-  names[BUTTON_A] = 'Circle'
-  names[BUTTON_B] = 'Triangle'
-  names[LEFT_TRIGGER] = 'LEFT TRIGGER'
-  names[RIGHT_TRIGGER] = 'RIGHT TRIGGER'
-}
-
 export class Input {
   constructor() {
     this.in = new Array(BUTTONS).fill(false)
     this.keyboard = new Array(BUTTONS).fill(false)
     this.pressed = new Array(BUTTONS).fill(false)
-    this.ghost = new Array(BUTTONS).fill(0)
     this.timers = new Array(BUTTONS).fill(0)
     this.names = new Array(BUTTONS).fill('')
     this.mouseLeftDown = false
@@ -89,6 +38,54 @@ export class Input {
     this.leftStickPower = 0.0
     this.rightStickX = 0.0
     this.rightStickY = 0.0
+  }
+
+  usingKeyboardMouse() {
+    const names = this.names
+    names[BUTTON_START] = 'ENTER'
+    names[BUTTON_SELECT] = 'SPACE'
+    names[STICK_UP] = 'W'
+    names[STICK_DOWN] = 'S'
+    names[STICK_LEFT] = 'A'
+    names[STICK_RIGHT] = 'D'
+    names[BUTTON_X] = 'I'
+    names[BUTTON_Y] = 'J'
+    names[BUTTON_A] = 'L'
+    names[BUTTON_B] = 'K'
+    names[LEFT_TRIGGER] = 'Q'
+    names[RIGHT_TRIGGER] = 'O'
+  }
+
+  usingXbox() {
+    const names = this.names
+    names[BUTTON_START] = 'START'
+    names[BUTTON_SELECT] = 'SPACE'
+    names[STICK_UP] = 'LEFT STICK UP'
+    names[STICK_DOWN] = 'LEFT STICK DOWN'
+    names[STICK_LEFT] = 'LEFT STICK LEFT'
+    names[STICK_RIGHT] = 'LEFT STICK RIGHT'
+    names[BUTTON_X] = 'A'
+    names[BUTTON_Y] = 'B'
+    names[BUTTON_A] = 'X'
+    names[BUTTON_B] = 'Y'
+    names[LEFT_TRIGGER] = 'LEFT TRIGGER'
+    names[RIGHT_TRIGGER] = 'RIGHT TRIGGER'
+  }
+
+  usingPlayStation() {
+    const names = this.names
+    names[BUTTON_START] = 'START'
+    names[BUTTON_SELECT] = 'SPACE'
+    names[STICK_UP] = 'LEFT STICK UP'
+    names[STICK_DOWN] = 'LEFT STICK DOWN'
+    names[STICK_LEFT] = 'LEFT STICK LEFT'
+    names[STICK_RIGHT] = 'LEFT STICK RIGHT'
+    names[BUTTON_X] = 'X'
+    names[BUTTON_Y] = 'Square'
+    names[BUTTON_A] = 'Circle'
+    names[BUTTON_B] = 'Triangle'
+    names[LEFT_TRIGGER] = 'LEFT TRIGGER'
+    names[RIGHT_TRIGGER] = 'RIGHT TRIGGER'
   }
 
   set(index, down) {
@@ -161,15 +158,6 @@ export class Input {
     const down = this.in[key]
     if (down) this.timers[key] = now
     return down
-  }
-
-  double(now, key) {
-    // fixme: broken
-    const down = this.in[key]
-    const decide = down && now - DOUBLE_RATE < this.timers[key] && now - DOUBLE_RATE > this.ghost[key]
-    if (down) this.timers[key] = now
-    if (!down) this.ghost[key] = now
-    return decide
   }
 
   press(key) {

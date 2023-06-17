@@ -1,0 +1,12 @@
+{
+  "image": "dungeon",
+  "sprites": [
+    {
+      "name": "dirt",
+      "x": 0,
+      "y": 0,
+      "width": 16,
+      "height": 16
+    }
+  ]
+}

@@ -8,8 +8,34 @@ const ws = require('ws')
 
 const world = require('./world')
 
-const SECTOR = path.join(__dirname, './sectors', 'test.json')
-const WORLD = new world.World(SECTOR)
+function close() {
+  console.log('closing...')
+  if (DB) {
+    try {
+      DB.close()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+  if (SERVER) {
+    try {
+      SERVER.close()
+    } catch (e) {
+      console.error(e)
+    }
+  }
+  process.exit(0)
+}
+
+process.on('SIGTERM', () => {
+  console.log('sigterm')
+  close()
+})
+
+process.on('SIGINT', () => {
+  console.log('sigint')
+  close()
+})
 
 const DB = new sql.Database(':memory:', (err) => {
   if (err) {
@@ -18,7 +44,6 @@ const DB = new sql.Database(':memory:', (err) => {
     console.log('database connected')
   }
 })
-DB.close()
 
 const EXTENSIONS = {
   '.js': 'text/javascript',
@@ -54,21 +79,37 @@ const SERVER = http.createServer(function (request, response) {
   })
 })
 
-const PORT = 3000
-
-SERVER.listen(PORT)
-
-console.log('world on port', PORT)
-
 const SOCKET = new ws.Server({ noServer: true })
 
 SERVER.on('upgrade', function upgrade(request, socket, head) {
-  SOCKET.handleUpgrade(request, socket, head, function done(web) {
-    SOCKET.emit('connection', web, request)
-  })
+  console.log('upgrade', request.url)
+  if (request.url === '/websocket') {
+    SOCKET.handleUpgrade(request, socket, head, function done(web) {
+      SOCKET.emit('connection', web, request)
+    })
+  }
 })
 
 SOCKET.on('connection', (socket) => {
-  console.log('socket connected')
-  socket.on('message', (message) => console.log(message))
+  console.log('new socket')
+
+  socket.on('message', (data, binary) => {
+    world.message(socket, data, binary)
+  })
+
+  socket.on('close', (code, reason) => {
+    console.log('close socket')
+    world.closeConnection(socket, code, reason)
+  })
 })
+
+const PORT = 3000
+
+async function main() {
+  await world.init(DB)
+  SERVER.listen(PORT)
+  console.log('world on port', PORT)
+  world.tick()
+}
+
+main()

@@ -2,101 +2,245 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import { FetchText } from './net.js'
-import * as In from './input.js'
+import * as input from './input.js'
+import * as net from './net.js'
+import * as images from './images.js'
+import * as environment from './environment.js'
+import { Sector, TILES } from './sector.js'
 
-export class Client {
-  constructor(canvas, context) {
-    this.canvas = canvas
-    this.context = context
+export const CONTROLLERS = []
 
-    const keys = new Map()
+export const INPUT = new input.Input()
 
-    keys.set('Enter', In.BUTTON_START)
-    keys.set('Space', In.BUTTON_SELECT)
+const KEYS = new Map()
 
-    keys.set('KeyW', In.STICK_UP)
-    keys.set('KeyA', In.STICK_LEFT)
-    keys.set('KeyS', In.STICK_DOWN)
-    keys.set('KeyD', In.STICK_RIGHT)
+let CANVAS = null
+let CONTEXT = null
+let SOCKET_QUEUE = null
+let SOCKET = null
+let USER = null
+let PLAYER = null
 
-    keys.set('ArrowUp', In.BUTTON_X)
-    keys.set('ArrowLeft', In.BUTTON_Y)
-    keys.set('ArrowDown', In.BUTTON_B)
-    keys.set('ArrowRight', In.BUTTON_A)
+const SECTORS = new Map()
 
-    keys.set('KeyI', In.BUTTON_X)
-    keys.set('KeyJ', In.BUTTON_Y)
-    keys.set('KeyK', In.BUTTON_B)
-    keys.set('KeyL', In.BUTTON_A)
+const OFFSET_X = TILES * environment.WIDTH
+const OFFSET_Y = TILES * environment.HEIGHT
+const DRAW_SECTOR_VISIT = new Set()
 
-    keys.set('KeyQ', In.LEFT_TRIGGER)
-    keys.set('KeyO', In.RIGHT_TRIGGER)
+function keyEvent(code, down) {
+  if (KEYS.has(code)) INPUT.set(KEYS.get(code), down)
+}
 
-    this.keys = keys
+export function keyUp(event) {
+  keyEvent(event.code, false)
+}
 
-    this.input = new In.Input()
-    In.usingKeyboardMouse(this.input)
+export function keyDown(event) {
+  keyEvent(event.code, true)
+}
+
+function mouseEvent() {}
+
+export function mouseUp(event) {
+  mouseEvent(event.button, false)
+}
+
+export function mouseDown(event) {
+  mouseEvent(event.button, true)
+}
+
+export function mouseMove() {}
+
+export function touchStart() {}
+
+export function touchEnd() {}
+
+export function touchMove() {}
+
+export function pause() {}
+
+export function resume() {}
+
+export function resize(width, height) {
+  CANVAS.width = width
+  CANVAS.height = height
+  CONTEXT.imageSmoothingEnabled = false
+}
+
+export async function init(canvas, context) {
+  CANVAS = canvas
+  CONTEXT = context
+
+  const environmentImage = images.load('environment', './images/environment.png')
+  const monstersImage = images.load('monsters', './images/monsters.png')
+
+  KEYS.set('Enter', input.BUTTON_START)
+  KEYS.set('Space', input.BUTTON_SELECT)
+  KEYS.set('KeyW', input.STICK_UP)
+  KEYS.set('KeyA', input.STICK_LEFT)
+  KEYS.set('KeyS', input.STICK_DOWN)
+  KEYS.set('KeyD', input.STICK_RIGHT)
+  KEYS.set('ArrowUp', input.BUTTON_X)
+  KEYS.set('ArrowLeft', input.BUTTON_Y)
+  KEYS.set('ArrowDown', input.BUTTON_B)
+  KEYS.set('ArrowRight', input.BUTTON_A)
+  KEYS.set('KeyI', input.BUTTON_X)
+  KEYS.set('KeyJ', input.BUTTON_Y)
+  KEYS.set('KeyK', input.BUTTON_B)
+  KEYS.set('KeyL', input.BUTTON_A)
+  KEYS.set('KeyQ', input.LEFT_TRIGGER)
+  KEYS.set('KeyO', input.RIGHT_TRIGGER)
+  INPUT.usingKeyboardMouse()
+
+  // const thing = await RequestText('./map')
+  // console.log(thing)
+
+  SOCKET_QUEUE = []
+
+  SOCKET = await net.socket()
+  // socket.binaryType = 'arraybuffer'
+
+  SOCKET.onclose = function () {
+    console.log('lost connection to server')
+    SOCKET = null
   }
 
-  keyEvent(code, down) {
-    if (this.keys.has(code)) this.input.set(this.keys.get(code), down)
+  SOCKET.onmessage = function (event) {
+    SOCKET_QUEUE.push(event.data)
   }
 
-  keyUp(event) {
-    this.keyEvent(event.code, false)
+  USER = 'guest'
+
+  const text = JSON.stringify({ code: 'online', user: USER, password: 'secret' })
+  SOCKET.send(text)
+
+  await environmentImage
+  await monstersImage
+}
+
+function data(sectors) {
+  SECTORS.clear()
+
+  const count = sectors.length
+  for (let s = 0; s < count; s++) {
+    const sector = new Sector(sectors[s])
+
+    const players = sector.players
+    for (let p = 0; p < sector.playerCount; p++) {
+      const player = players[p]
+      if (player.name === USER) {
+        PLAYER = player
+      }
+    }
+
+    SECTORS.set(sector.name, sector)
   }
 
-  keyDown(event) {
-    this.keyEvent(event.code, true)
+  for (const [, sec] of SECTORS.entries()) {
+    if (sec.leftName !== null) {
+      const left = SECTORS.get(sec.leftName)
+      if (left !== null) {
+        sec.left = left
+        left.right = sec
+      }
+    }
+    if (sec.rightName !== null) {
+      const right = SECTORS.get(sec.rightName)
+      if (right !== null) {
+        sec.right = right
+        right.left = sec
+      }
+    }
+    if (sec.upName !== null) {
+      const up = SECTORS.get(sec.upName)
+      if (up !== null) {
+        sec.up = up
+        up.down = sec
+      }
+    }
+    if (sec.downName !== null) {
+      const down = SECTORS.get(sec.downName)
+      if (down !== null) {
+        sec.down = down
+        down.up = sec
+      }
+    }
   }
 
-  mouseEvent() {}
-
-  mouseUp(event) {
-    this.mouseEvent(event.button, false)
+  if (PLAYER === null) {
+    console.error('player not in data')
   }
 
-  mouseDown(event) {
-    this.mouseEvent(event.button, true)
+  PLAYER.input = INPUT
+  PLAYER.socket = SOCKET
+}
+
+export function update(time) {
+  if (time === 0) {
+    console.log(time)
   }
 
-  mouseMove() {}
-
-  touchStart() {}
-
-  touchEnd() {}
-
-  touchMove() {}
-
-  pause() {}
-
-  resume() {}
-
-  resize(width, height) {
-    this.canvas.width = width
-    this.canvas.height = height
-    this.context.imageSmoothingEnabled = false
+  const socketQueue = SOCKET_QUEUE
+  if (socketQueue.length !== 0) {
+    for (let i = 0; i < socketQueue.length; i++) {
+      const packet = JSON.parse(socketQueue[i])
+      switch (packet.code) {
+        case 'data':
+          console.log('DATA', socketQueue[i])
+          data(packet.sectors)
+          break
+        case 'snapshot':
+          if (PLAYER !== null) PLAYER.message(packet)
+          break
+      }
+    }
+    socketQueue.length = 0
   }
 
-  async initialize() {
-    this.image = new Image()
-    this.image.src = './images/TILES.png'
+  INPUT.keyboardMouseUpdate()
 
-    const thing = await FetchText('./map')
-    console.log(thing)
+  if (PLAYER !== null) PLAYER.update()
+}
+
+export function draw() {
+  const canvas = CANVAS
+  const context = CONTEXT
+
+  context.clearRect(0, 0, canvas.width, canvas.height)
+
+  const player = PLAYER
+
+  if (player === null) {
+    return
   }
 
-  update(time) {}
+  const sector = player.sector
 
-  render() {
-    const canvas = this.canvas
-    const context = this.context
+  const x = player.x + canvas.width * 0.5
+  const y = player.y + canvas.height * 0.5
 
-    context.clearRect(0, 0, canvas.width, canvas.height)
+  DRAW_SECTOR_VISIT.clear()
+  drawSector(sector, x, y)
+}
 
-    const image = this.image
-    context.drawImage(image, 0, 0, 16, 16, 200, 100, 64, 64) // 256x128
-    context.drawImage(image, 16, 0, 32, 16, 400, 100, 64, 64) // 256x128
+function drawSector(sector, x, y) {
+  if (DRAW_SECTOR_VISIT.has(sector)) return
+  DRAW_SECTOR_VISIT.add(sector)
+  for (let r = 0; r < TILES; r++) {
+    for (let c = 0; c < TILES; c++) {
+      const sprite = environment.SPRITES[sector.tiles[c + r * TILES]]
+      CONTEXT.drawImage(sector.image, sprite[0], sprite[1], sprite[2], sprite[3], x + c * environment.WIDTH, y + r * environment.HEIGHT, environment.WIDTH, environment.HEIGHT)
+    }
   }
+  const players = sector.players
+  let i = sector.playerCount
+  while (i--) {
+    const player = players[i]
+    const sprite = player.sprite
+    CONTEXT.drawImage(player.image, sprite[0], sprite[1], sprite[2], sprite[3], x + player.x, y + player.y, sprite[2], sprite[3])
+  }
+  if (sector.left !== null) drawSector(sector.left, x - OFFSET_X, y)
+  if (sector.right !== null) drawSector(sector.right, x + OFFSET_X, y)
+  if (sector.up !== null) drawSector(sector.up, x, y - OFFSET_Y)
+  if (sector.down !== null) drawSector(sector.down, x, y + OFFSET_Y)
 }

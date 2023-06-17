@@ -6,7 +6,7 @@ const PREFIX = ['Death', 'Blood', 'Vile', 'Sin', 'Dark']
 const SUFFIX = ['Burn', 'Spawn', 'Spell', 'Wound', 'Feast']
 const APPELATION = ['Witch', 'Hungry', 'Slayer', 'Unholy', 'Flayer']
 
-function MonsterName() {
+function monsterName() {
   const prefix = PREFIX[Math.floor(Math.random() * PREFIX.length)]
   const suffix = SUFFIX[Math.floor(Math.random() * SUFFIX.length)]
   const name = prefix + ' ' + suffix
@@ -18,5 +18,5 @@ function MonsterName() {
 }
 
 module.exports = {
-  MonsterName: MonsterName,
+  monsterName: monsterName,
 }
