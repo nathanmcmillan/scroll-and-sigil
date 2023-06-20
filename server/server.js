@@ -4,7 +4,6 @@ const http = require('http')
 const fs = require('fs')
 const path = require('path')
 const sql = require('sqlite3')
-const ws = require('ws')
 
 const world = require('./world')
 
@@ -61,8 +60,30 @@ const EXTENSIONS = {
 }
 
 const SERVER = http.createServer(function (request, response) {
-  console.log('request', request.url)
-  let file = request.url.split('?')[0]
+  const url = request.url
+  if (request.method === 'POST') {
+    console.log('post', url)
+    const chunks = []
+    request.on('data', function (data) {
+      chunks.push(data)
+      if (chunks.length > 100) request.connection.destroy()
+    })
+    request.on('end', async function () {
+      try {
+        const data = JSON.parse(Buffer.concat(chunks).toString())
+        const receive = await world.event(url, data)
+        response.writeHead(200, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify(receive), 'utf-8')
+      } catch (e) {
+        console.error(e)
+        response.writeHead(500, { 'Content-Type': 'text/plain' })
+        response.end('internal error', 'utf-8')
+      }
+    })
+    return
+  }
+  console.log('request', url)
+  let file = url.split('?')[0]
   if (file === '/') file = '/game.html'
   else if (file.indexOf('.') === -1) file += '.html'
   file = 'public' + file
@@ -79,37 +100,12 @@ const SERVER = http.createServer(function (request, response) {
   })
 })
 
-const SOCKET = new ws.Server({ noServer: true })
-
-SERVER.on('upgrade', function upgrade(request, socket, head) {
-  console.log('upgrade', request.url)
-  if (request.url === '/websocket') {
-    SOCKET.handleUpgrade(request, socket, head, function done(web) {
-      SOCKET.emit('connection', web, request)
-    })
-  }
-})
-
-SOCKET.on('connection', (socket) => {
-  console.log('new socket')
-
-  socket.on('message', (data, binary) => {
-    world.message(socket, data, binary)
-  })
-
-  socket.on('close', (code, reason) => {
-    console.log('close socket')
-    world.closeConnection(socket, code, reason)
-  })
-})
-
 const PORT = 3000
 
 async function main() {
   await world.init(DB)
   SERVER.listen(PORT)
   console.log('world on port', PORT)
-  world.tick()
 }
 
 main()

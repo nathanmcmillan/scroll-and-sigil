@@ -2,3 +2,4 @@ oryx/
 node_modules/
 
 *.png
+*.wav

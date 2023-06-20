@@ -1,14 +1,6 @@
-let NETWORK_ID = 0
-
-function NextNID() {
-  NETWORK_ID++
-  return NETWORK_ID
-}
-
 class Thing {
   constructor(sector, data) {
     this.sector = sector
-    this.nid = NextNID()
     this.x = data.x
     this.y = data.y
     this.box = 0.5
@@ -45,6 +37,5 @@ class Thing {
 }
 
 module.exports = {
-  NextNID: NextNID,
   Thing: Thing,
 }

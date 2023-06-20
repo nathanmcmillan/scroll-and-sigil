@@ -1,8 +1,5 @@
 {
-  "left": null,
-  "right": "testb",
-  "up": null,
-  "down": null,
+  "travel": ["test_b"],
   "tiles": [
     [2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
     [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
@@ -21,7 +18,9 @@
     [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
   ],
-  "origin": [2, 2],
-  "things": [{ "is": "goblin", "column": 6, "row": 6 }],
+  "events": [
+    { "id": 0, "event": "attack", "type": "goblins", "left": 6, "top": 6, "right": 7, "bottom": 7 },
+    { "id": 1, "event": "fish", "type": "shrimp", "left": 1, "top": 1, "right": 1, "bottom": 1 }
+  ],
   "music": "home"
 }

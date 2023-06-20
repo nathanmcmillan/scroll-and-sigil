@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
 
-node_modules/electron/dist/electron desktop/main.js
+node_modules/electron/dist/electron desktop/desktop.js

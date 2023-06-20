@@ -30,7 +30,7 @@ export async function requestBinary(path) {
     .catch((err) => console.error(err))
 }
 
-export async function send(path, data) {
+export async function post(path, data) {
   return fetch(path, {
     method: 'POST',
     body: data,
@@ -39,19 +39,4 @@ export async function send(path, data) {
       return data.text()
     })
     .catch((err) => console.error(err))
-}
-
-export async function socket() {
-  const path = location.host + '/websocket'
-  return new Promise(function (resolve, reject) {
-    let soc
-    if (location.protocol === 'https:') soc = new WebSocket('wss://' + path)
-    else soc = new WebSocket('ws://' + path)
-    soc.onopen = function () {
-      resolve(soc)
-    }
-    soc.onerror = function (err) {
-      reject(err)
-    }
-  })
 }

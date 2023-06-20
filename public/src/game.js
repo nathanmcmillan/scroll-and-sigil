@@ -19,8 +19,7 @@ function touchIndexById(identifier) {
 function tick(time) {
   if (ACTIVE && time - PREVIOUS_TICK >= 15.999) {
     PREVIOUS_TICK = time
-    client.update(time)
-    client.draw()
+    client.draw(time)
   }
   window.requestAnimationFrame(tick)
 }
@@ -116,30 +115,9 @@ async function main() {
     }
   }
 
-  window.addEventListener('gamepadconnected', (event) => {
-    const controller = event.gamepad
-    console.log('controller connected', controller.buttons.length, 'buttons', controller.axes.length, 'axes')
-    if (controller.buttons.length < 12 || controller.axes.length < 4) {
-      console.warning('controller does not have enough buttons or axes')
-      return
-    }
-    client.INPUT.usingPlayStation()
-    client.CONTROLLERS.push(controller)
-  })
-
-  window.addEventListener('gamepaddisconnected', (event) => {
-    const controller = event.gamepad
-    console.log('controller disconnected: %d', controller.index)
-    const array = client.CONTROLLERS
-    for (let c = 0; c < array.length; c++) {
-      if (array[c].index === controller.index) array.splice(c, 1)
-    }
-    if (client.CONTROLLERS.length === 0) client.INPUT.usingKeyboardMouse()
-  })
-
   window.onresize = () => {
     client.resize(window.innerWidth, window.innerHeight)
-    if (!ACTIVE) client.draw()
+    if (!ACTIVE) client.draw(PREVIOUS_TICK)
   }
 
   window.onblur = () => {
