@@ -9,15 +9,19 @@ import * as tiles from './tiles.js'
 import * as event from './event.js'
 import { Button } from './button.js'
 
+let SCALE = 1
+
+let SCREEN = null
+let SCREEN_CONTEXT = null
+
 let CANVAS = null
 let CONTEXT = null
+let CANVAS_WIDTH = 0
+let CANVAS_HEIGHT = 0
 let CANVAS_WIDTH_HALF = 0
 let CANVAS_HEIGHT_HALF = 0
 
 let LISTEN = null
-
-let USER = null
-let SESSION = null
 
 let EVENT = null
 let TIME = null
@@ -45,7 +49,7 @@ const TRAVEL_BUTTON = new Button()
 const BUTTONS = [TRAVEL_BUTTON]
 
 function keyEvent(code, down) {
-  console.debug(code, down)
+  // console.debug(code, down)
 }
 
 export function keyUp(event) {
@@ -80,17 +84,6 @@ export async function mouseUp(event) {
     console.debug(event)
     if (column < event.left || row < event.top || column > event.right || row > event.bottom) continue
     console.debug('event!')
-    const message = {
-      user: USER,
-      session: SESSION,
-      event: event.id,
-    }
-    const text = await net.post('event', JSON.stringify(message))
-    console.log(text)
-    const receive = JSON.parse(text)
-    if (receive.code === 'started') {
-      EVENT = event
-    }
     return
   }
 }
@@ -124,67 +117,86 @@ export function touchStart(event) {
   console.debug('touch', x, y)
 }
 
-export function touchEnd() {}
+export function touchEnd() { }
 
-export function touchMove() {}
+export function touchMove() { }
 
 export function pause() {
   if (LISTEN) LISTEN.pause()
 }
 
 export function resume() {
-  if (LISTEN) LISTEN.play()
+  if (LISTEN) {
+    const promise = LISTEN.play()
+    if (promise) promise.then(() => { }).catch(() => { })
+  }
 }
 
-export function resize(width, height) {
-  CANVAS.width = width
-  CANVAS.height = height
-  CANVAS_WIDTH_HALF = Math.floor(CANVAS.width / 2)
-  CANVAS_HEIGHT_HALF = Math.floor(CANVAS.height / 2)
+export function resize(scale, width, height) {
+
+  SCALE = scale
+
+  SCREEN.width = width
+  SCREEN.height = height
+
+  SCREEN_CONTEXT.imageSmoothingEnabled = false
+
+  CANVAS.width = Math.floor(SCREEN.width / SCALE)
+  CANVAS.height = Math.floor(SCREEN.height / SCALE)
+
   CONTEXT.imageSmoothingEnabled = false
+
+  CANVAS_WIDTH = CANVAS.width
+  CANVAS_HEIGHT = CANVAS.height
+  CANVAS_WIDTH_HALF = Math.floor(CANVAS_WIDTH / 2)
+  CANVAS_HEIGHT_HALF = Math.floor(CANVAS_HEIGHT / 2)
 }
 
-export async function init(canvas, context) {
-  CANVAS = canvas
-  CONTEXT = context
-  CANVAS_WIDTH_HALF = Math.floor(CANVAS.width / 2)
-  CANVAS_HEIGHT_HALF = Math.floor(CANVAS.height / 2)
+export async function init(scale, screen) {
+
+  SCALE = scale
+
+  SCREEN = screen
+  SCREEN_CONTEXT = screen.getContext('2d', { alpha: false })
+  SCREEN_CONTEXT.imageSmoothingEnabled = false
+
+  CANVAS = document.createElement('canvas')
+  CANVAS.width = Math.floor(SCREEN.width / scale)
+  CANVAS.height = Math.floor(SCREEN.height / scale)
+  CONTEXT = CANVAS.getContext('2d', { alpha: false })
+  CONTEXT.imageSmoothingEnabled = false
+
+  CANVAS_WIDTH = CANVAS.width
+  CANVAS_HEIGHT = CANVAS.height
+  CANVAS_WIDTH_HALF = Math.floor(CANVAS_WIDTH / 2)
+  CANVAS_HEIGHT_HALF = Math.floor(CANVAS_HEIGHT / 2)
 
   const tilesImage = images.load('tiles', './images/tiles.png')
   const monstersImage = images.load('monsters', './images/monsters.png')
   const interfaceImage = images.load('interface', './images/interface.png')
   const fontImage = images.loadAndSwap('font', './images/font.png')
 
-  TRAVEL_BUTTON.x = 300
+  TRAVEL_BUTTON.x = 128
   TRAVEL_BUTTON.y = 10
   TRAVEL_BUTTON.width = 90
   TRAVEL_BUTTON.height = 80
   TRAVEL_BUTTON.spriteX = 10
   TRAVEL_BUTTON.spriteY = 10
 
-  USER = 'guest'
-  SESSION = null
+  EVENT = null
+  // TIME = online.time
 
-  const text = JSON.stringify({ code: 'online', user: USER, password: 'secret' })
-  const data = await net.post('online', text)
-  console.log(data)
-  const online = JSON.parse(data)
+  const home = JSON.parse(await net.requestText('./world/home.json'))
 
-  if (online.code !== 'online') return
+  // const sector = online.sector
 
-  SESSION = online.session
-
-  EVENT = null // online.event
-  TIME = online.time
-
-  const sector = online.sector
-
-  SECTOR = sector.name
-  COLUMNS = sector.columns
-  ROWS = sector.rows
-  TILES = sector.tiles
-  MUSIC = sector.music
-  EVENTS = sector.events
+  // SECTOR = sector.name
+  // COLUMNS = sector.columns
+  // ROWS = sector.rows
+  // TILES = sector.tiles
+  // MUSIC = sector.music
+  // EVENTS = sector.events
+  MUSIC = home.music
 
   await tilesImage
   await monstersImage
@@ -198,8 +210,9 @@ export async function init(canvas, context) {
   LISTEN.loop = true
   LISTEN.volume = 0.15
   LISTEN.currentTime = 0
-  const promise = LISTEN.play()
-  if (promise) promise.then(() => {}).catch(() => {})
+}
+
+export function update(time) {
 }
 
 export function draw(time) {
@@ -211,12 +224,6 @@ export function draw(time) {
   context.clearRect(0, 0, canvas.width, canvas.height)
 
   const font = images.IMAGES.get('font')
-
-  if (SESSION === null) {
-    render.text(context, font, 10, 10, 'not logged in!', 2, render.FONT)
-    return
-  }
-
   const image = images.IMAGES.get('tiles')
 
   for (let r = 0; r < ROWS; r++) {
@@ -226,13 +233,250 @@ export function draw(time) {
     }
   }
 
-  const description = (EVENT === null ? 'idle' : event.description(EVENT)) + ' at ' + SECTOR
-
+  const description = (EVENT === null ? 'idle' : event.description(EVENT))
   render.text(context, font, 10, 10, description, 2, render.FONT)
 
   const buttons = images.IMAGES.get('interface')
-
   drawButton(context, buttons, TRAVEL_BUTTON)
+
+  const buffer = context.getImageData(0, 0, canvas.width, canvas.height)
+  const pixels = buffer.data
+
+  pixel2d(pixels, 10, 30, 255, 0, 0)
+  line2d(pixels, 20, 40, 255, 0, 0, 30, 50, 255, 0, 0)
+  triangle2d(pixels,
+    20, 60, 255, 0, 0,
+    50, 80, 255, 255, 0,
+    30, 90, 255, 0, 255)
+
+  const tilePixels = images.IMAGE_PIXELS.get('tiles')
+  image2d(pixels, 60, 10, tilePixels, 10, 10, 40, 40)
+
+  blit(context, buffer)
+
+  SCREEN_CONTEXT.drawImage(CANVAS, 0, 0, CANVAS.width, CANVAS.height, 0, 0, SCREEN.width, SCREEN.height)
+}
+
+function pixel2d(pixels, x, y, r, g, b) {
+  if (x < 0 || x >= CANVAS_WIDTH || y < 0 || y >= CANVAS_HEIGHT) return
+  const i = (x + y * CANVAS_WIDTH) * 4
+  pixels[i] = r
+  pixels[i + 1] = g
+  pixels[i + 2] = b
+  // pixels[i + 3] = 255
+}
+
+function image2d(pixels, x, y, image, ix, iy, iw, ih) {
+  const ie = iy + ih
+  for (let z = iy; z < ie; z++) {
+
+  }
+}
+
+function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
+  var dx = x2 - x1;
+  var dy = y2 - y1;
+
+  if (dx == 0 && dy == 0) {
+    pixel2d(pixels, x1, y1, r1, g1, b1);
+    return;
+  }
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    var xs, xb;
+
+    if (x1 < x2) {
+      xs = x1;
+      xb = x2;
+    }
+    else {
+      xs = x2;
+      xb = x1;
+    }
+
+    var slope = dy / dx;
+
+    for (var x = xs; x <= xb; x++) {
+      var y = y1 + ((x - x1) * slope);
+      var c = (x - x1) / dx;
+      var r = r1 + (r2 - r1) * c;
+      var g = g1 + (g2 - g1) * c;
+      var b = b1 + (b2 - b1) * c;
+      pixel2d(pixels, Math.round(x), Math.round(y), Math.round(r), Math.round(g), Math.round(b));
+    }
+  }
+  else {
+    var ys, yb;
+
+    if (y1 < y2) {
+      ys = y1;
+      yb = y2;
+    }
+    else {
+      ys = y2;
+      yb = y1;
+    }
+
+    var slope = dx / dy;
+
+    for (var y = ys; y <= yb; y++) {
+      var x = x1 + ((y - y1) * slope);
+      var c = (y - y1) / dy;
+      var r = r1 + (r2 - r1) * c;
+      var g = g1 + (g2 - g1) * c;
+      var b = b1 + (b2 - b1) * c;
+      pixel2d(pixels, Math.round(x), Math.round(y), Math.round(r), Math.round(g), Math.round(b));
+    }
+  }
+}
+
+function edge2d(x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
+  if (y1 < y2) {
+    this.r1 = r1;
+    this.g1 = g1;
+    this.b1 = b1;
+
+    this.x1 = x1;
+    this.y1 = y1;
+
+    this.r2 = r2;
+    this.g2 = g2;
+    this.b2 = b2;
+
+    this.x2 = x2;
+    this.y2 = y2;
+  }
+  else {
+    this.r1 = r2;
+    this.g1 = g2;
+    this.b1 = b2;
+
+    this.x1 = x2;
+    this.y1 = y2;
+
+    this.r2 = r1;
+    this.g2 = g1;
+    this.b2 = b1;
+
+    this.x2 = x1;
+    this.y2 = y1;
+  }
+}
+
+function span2d(x1, x2, r1, g1, b1, r2, g2, b2) {
+  if (x1 < x2) {
+    this.r1 = r1;
+    this.g1 = g1;
+    this.b1 = b1;
+
+    this.x1 = x1;
+
+    this.r2 = r2;
+    this.g2 = g2;
+    this.b2 = b2;
+
+    this.x2 = x2;
+  }
+  else {
+    this.r1 = r2;
+    this.g1 = g2;
+    this.b1 = b2;
+
+    this.x1 = x2;
+
+    this.r2 = r1;
+    this.g2 = g1;
+    this.b2 = b1;
+
+    this.x2 = x1;
+  }
+}
+
+function dspan2d(pixels, s, y) {
+  var dx = s.x2 - s.x1;
+  if (dx == 0) return;
+
+  var dr = s.r2 - s.r1;
+  var dg = s.g2 - s.g1;
+  var db = s.b2 - s.b1;
+
+  var factor = 0.0;
+  var step = 1.0 / dx;
+
+  for (var x = Math.round(s.x1); x < s.x2; x++) {
+    var r = s.r1 + dr * factor;
+    var g = s.g1 + dg * factor;
+    var b = s.b1 + db * factor;
+
+    pixel2d(pixels, x, y, Math.round(r), Math.round(g), Math.round(b));
+    factor += step;
+  }
+}
+
+function dspanbetweenedges2d(pixels, e1, e2) {
+  var e1dy = e1.y2 - e1.y1;
+  if (e1dy == 0) return;
+
+  var e2dy = e2.y2 - e2.y1;
+  if (e2dy == 0) return;
+
+  var e1dx = e1.x2 - e1.x1;
+  var e2dx = e2.x2 - e2.x1;
+
+  var e1dr = e1.r2 - e1.r1;
+  var e1dg = e1.g2 - e1.g1;
+  var e1db = e1.b2 - e1.b1;
+
+  var e2dr = e2.r2 - e2.r1;
+  var e2dg = e2.g2 - e2.g1;
+  var e2db = e2.b2 - e2.b1;
+
+  var factor1 = (e2.y1 - e1.y1) / e1dy;
+  var factor2 = 0;
+
+  var step1 = 1.0 / e1dy;
+  var step2 = 1.0 / e2dy;
+
+  for (var y = e2.y1; y < e2.y2; y++) {
+    var r1 = e1.r1 + e1dr * factor1;
+    var g1 = e1.g1 + e1dg * factor1;
+    var b1 = e1.b1 + e1db * factor1;
+
+    var r2 = e2.r1 + e2dr * factor2;
+    var g2 = e2.g1 + e2dg * factor2;
+    var b2 = e2.b1 + e2db * factor2;
+
+    var s = new span2d(e1.x1 + e1dx * factor1, e2.x1 + e2dx * factor2, r1, g1, b1, r2, g2, b2);
+    dspan2d(pixels, s, Math.round(y));
+
+    factor1 += step1;
+    factor2 += step2;
+  }
+}
+
+function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, g3, b3) {
+  var edges = new Array();
+  edges.push(new edge2d(x1, y1, r1, g1, b1, x2, y2, r2, g2, b2));
+  edges.push(new edge2d(x2, y2, r2, g2, b2, x3, y3, r3, g3, b3));
+  edges.push(new edge2d(x3, y3, r3, g3, b3, x1, y1, r1, g1, b1));
+
+  var lb = 0;
+  var eb = 0;
+
+  for (var i = 0; i < 3; i++) {
+    var length = edges[i].y2 - edges[i].y1;
+    if (length > lb) {
+      lb = length;
+      eb = i;
+    }
+  }
+
+  dspanbetweenedges2d(pixels, edges[eb], edges[(eb + 1) % 3]);
+  dspanbetweenedges2d(pixels, edges[eb], edges[(eb + 2) % 3]);
+}
+
+function blit(context, buffer) {
+  context.putImageData(buffer, 0, 0)
 }
 
 function drawButton(context, image, button) {

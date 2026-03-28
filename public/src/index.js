@@ -19,28 +19,43 @@ function touchIndexById(identifier) {
 function tick(time) {
   if (ACTIVE && time - PREVIOUS_TICK >= 15.999) {
     PREVIOUS_TICK = time
+    client.update(time)
     client.draw(time)
   }
   window.requestAnimationFrame(tick)
 }
 
+function resize() {
+  const wide = Math.floor(window.innerWidth / 400)
+  const tall = Math.floor(window.innerHeight / 300)
+  const scale = Math.max(1, Math.min(wide, tall))
+  client.resize(scale, 400 * scale, 300 * scale)
+}
+
 async function main() {
+
+  const wide = Math.floor(window.innerWidth / 400)
+  const tall = Math.floor(window.innerHeight / 300)
+
+  const scale = Math.max(1, Math.min(wide, tall))
+
   const canvas = document.getElementById('canvas')
   canvas.style.display = 'block'
   canvas.style.position = 'absolute'
-  canvas.style.left = '0'
-  canvas.style.right = '0'
-  canvas.style.top = '0'
-  canvas.style.bottom = '0'
+  // canvas.style.left = '0'
+  // canvas.style.right = '0'
+  // canvas.style.top = '0'
+  // canvas.style.bottom = '0'
   canvas.style.margin = 'auto'
-  canvas.width = window.innerWidth
-  canvas.height = window.innerHeight
+  // canvas.width = window.innerWidth
+  // canvas.height = window.innerHeight
+  // canvas.width = Math.floor(window.innerWidth / scale)
+  // canvas.height = Math.floor(window.innerHeight / scale)
+  canvas.width = 400 * scale
+  canvas.height = 300 * scale
   if ('ontouchstart' in window) canvas.requestFullscreen()
 
-  const context = canvas.getContext('2d')
-  context.imageSmoothingEnabled = false
-
-  await client.init(canvas, context)
+  await client.init(scale, canvas)
 
   document.getElementById('loading').remove()
 
@@ -116,7 +131,7 @@ async function main() {
   }
 
   window.onresize = () => {
-    client.resize(window.innerWidth, window.innerHeight)
+    resize()
     if (!ACTIVE) client.draw(PREVIOUS_TICK)
   }
 
