@@ -33,7 +33,6 @@ function resize() {
 }
 
 async function main() {
-
   const wide = Math.floor(window.innerWidth / 400)
   const tall = Math.floor(window.innerHeight / 300)
 

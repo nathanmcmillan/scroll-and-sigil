@@ -57,5 +57,5 @@ function pixels(image) {
       pixels[i + 3] = 0
     }
   }
-  return pixels
+  return { width: image.width, height: image.height, pixels: pixels }
 }

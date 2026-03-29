@@ -34,8 +34,8 @@
   <button id="mobile" style="display: none">Run game</button>
   <p id="loading" style="display: none">Loading. Please wait...</p>
   <script type="module">
-    let mobile = document.getElementById('mobile')
-    let loading = document.getElementById('loading')
+    const mobile = document.getElementById('mobile')
+    const loading = document.getElementById('loading')
     if ('ontouchstart' in window) {
       mobile.style.display = 'flex'
       mobile.style.fontFamily = 'monospace'

@@ -13,7 +13,7 @@ export async function requestText(path) {
 export async function requestImage(path) {
   const image = new Image()
   image.src = path
-  return new Promise(function (resolve) {
+  return new Promise((resolve) => {
     image.onload = resolve
   })
     .then(() => {

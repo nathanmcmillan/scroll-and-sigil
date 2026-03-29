@@ -19,7 +19,7 @@ const extensions = {
   '.wav': 'audio/wav',
 }
 
-const server = http.createServer(function (request, response) {
+const server = http.createServer((request, response) => {
   console.log('request', request.url)
   let file = request.url.split('?')[0]
   if (file === '/') file = '/index.html'
@@ -27,7 +27,7 @@ const server = http.createServer(function (request, response) {
   file = directory + file
   const extension = path.extname(file)
   const mime = extensions[extension] || 'text/plain'
-  fs.readFile(file, function (error, content) {
+  fs.readFile(file, (error, content) => {
     if (error) {
       response.writeHead(404, { 'Content-Type': 'text/plain' })
       response.end('404', 'utf-8')
