@@ -19,8 +19,8 @@ function touchIndexById(identifier) {
 function tick(time) {
   if (ACTIVE && time - PREVIOUS_TICK >= 15.999) {
     PREVIOUS_TICK = time
-    client.update(time)
-    client.draw(time)
+    client.update()
+    client.draw()
   }
   window.requestAnimationFrame(tick)
 }

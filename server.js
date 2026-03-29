@@ -1,9 +1,9 @@
 /* Any copyright is dedicated to the Public Domain.
  * https://creativecommons.org/publicdomain/zero/1.0/ */
 
-const http = require('http')
-const fs = require('fs')
-const path = require('path')
+const http = require('node:http')
+const fs = require('node:fs')
+const path = require('node:path')
 
 const port = 3000
 const directory = 'public'
