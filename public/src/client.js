@@ -123,9 +123,9 @@ export function touchStart(event) {
   console.debug('touch', x, y)
 }
 
-export function touchEnd() {}
+export function touchEnd() { }
 
-export function touchMove() {}
+export function touchMove() { }
 
 export function pause() {
   if (LISTEN) LISTEN.pause()
@@ -134,7 +134,7 @@ export function pause() {
 export function resume() {
   if (LISTEN) {
     const promise = LISTEN.play()
-    if (promise) promise.then(() => {}).catch(() => {})
+    if (promise) promise.then(() => { }).catch(() => { })
   }
 }
 
@@ -216,7 +216,7 @@ export async function init(scale, screen) {
   LISTEN.currentTime = 0
 }
 
-export function update() {}
+export function update() { }
 
 export function draw() {
   const canvas = CANVAS
@@ -261,7 +261,7 @@ export function draw() {
   sprite2d(pixels, 20, 120, tiles, 0, 0, 16, 24)
 
   const sr = 16.0 / tiles.width
-  const sb = 24.0 / tiles.height
+  const sb = 24.0 / tiles.height - 0.005
   texture2d(pixels, tiles, 50, 120, 0.0, 0.0, 66, 120, sr, 0.0, 66, 144, sr, sb)
   texture2d(pixels, tiles, 50, 120, 0.0, 0.0, 66, 144, sr, sb, 50, 144, 0.0, sb)
 
@@ -303,7 +303,7 @@ function sprite2d(pixels, x, y, image, sx, sy, sw, sh) {
   }
 }
 
-// function _mode2d(pixels, x1, y1, x2, y2, x3, y3, x4, y4, image, sx, sy, sw, sh) {
+// function mode2d(pixels, x1, y1, x2, y2, x3, y3, x4, y4, image, sx, sy, sw, sh) {
 // const iw = image.width
 // const src = image.pixels
 // let s = y * CANVAS_WIDTH
@@ -322,6 +322,7 @@ function sprite2d(pixels, x, y, image, sx, sy, sw, sh) {
 // }
 
 function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
+
   const dx = x2 - x1
   const dy = y2 - y1
 
@@ -331,8 +332,8 @@ function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
   }
 
   if (Math.abs(dx) > Math.abs(dy)) {
-    let xs, xb
 
+    let xs, xb
     if (x1 < x2) {
       xs = x1
       xb = x2
@@ -340,9 +341,7 @@ function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
       xs = x2
       xb = x1
     }
-
     const slope = dy / dx
-
     for (let x = xs; x <= xb; x++) {
       const y = y1 + (x - x1) * slope
       const c = (x - x1) / dx
@@ -351,9 +350,10 @@ function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
       const b = b1 + (b2 - b1) * c
       pixel2d(pixels, Math.round(x), Math.round(y), Math.round(r), Math.round(g), Math.round(b))
     }
-  } else {
-    let ys, yb
 
+  } else {
+
+    let ys, yb
     if (y1 < y2) {
       ys = y1
       yb = y2
@@ -361,9 +361,7 @@ function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
       ys = y2
       yb = y1
     }
-
     const slope = dx / dy
-
     for (let y = ys; y <= yb; y++) {
       const x = x1 + (y - y1) * slope
       const c = (y - y1) / dy
@@ -503,17 +501,24 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
     new edge2d(x2, y2, r2, g2, b2, x3, y3, r3, g3, b3),
     new edge2d(x3, y3, r3, g3, b3, x1, y1, r1, g1, b1),
   ]
-  let lb = 0
+  let lb = edges[0].y2 - edges[0].y1
   let eb = 0
-  for (let i = 0; i < 3; i++) {
-    const length = edges[i].y2 - edges[i].y1
-    if (length > lb) {
-      lb = length
-      eb = i
-    }
+  let length = edges[1].y2 - edges[1].y1
+  if (length > lb) {
+    lb = length
+    eb = 1
   }
-  between2d(pixels, edges[eb], edges[(eb + 1) % 3])
-  between2d(pixels, edges[eb], edges[(eb + 2) % 3])
+  length = edges[2].y2 - edges[2].y1
+  if (length > lb) {
+    between2d(pixels, edges[2], edges[0])
+    between2d(pixels, edges[2], edges[1])
+  } else if (eb === 0) {
+    between2d(pixels, edges[0], edges[1])
+    between2d(pixels, edges[0], edges[2])
+  } else if (eb === 1) {
+    between2d(pixels, edges[1], edges[2])
+    between2d(pixels, edges[1], edges[0])
+  }
 }
 
 function texel2d(x1, y1, u1, v1, x2, y2, u2, v2) {
@@ -588,7 +593,7 @@ function dtexspan2d(pixels, image, s, y) {
     const u = s.u1 + du * factor
     const v = s.v1 + dv * factor
 
-    // if (factor === 0.0) console.log('--->', x, y, '|', s.u1, du, factor, '|', s.v1, dv, factor, '|', Math.round(u * wide), Math.round(v * high))
+    // if (Math.round(v * high) >= 24.0) console.log('--->', x, y, '|', s.u1, du, factor, '|', s.v1, dv, factor, '|', Math.round(u * wide), Math.round(v * high))
 
     const t = (Math.round(u * wide) + Math.round(v * high) * wide) * 4
 
