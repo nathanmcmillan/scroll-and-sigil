@@ -486,7 +486,6 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
   }
   length = edge3 ? (y1 - y3) : (y3 - y1)
   if (length > longest) {
-    // [2] -> [0] | (3, 1) -> (1, 2) | edge3 -> edge1
     if (edge3) {
       if (edge1) {
         between2d(pixels,
@@ -499,21 +498,6 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
           x2, y2, r2, g2, b2, x1, y1, r1, g1, b1
         )
       }
-    } else {
-      if (edge1) {
-        between2d(pixels,
-          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3,
-          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2
-        )
-      } else {
-        between2d(pixels,
-          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3,
-          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1
-        )
-      }
-    }
-    // [2] -> [1] | (3, 1) -> (2, 3) | edge3 -> edge2
-    if (edge3) {
       if (edge2) {
         between2d(pixels,
           x3, y3, r3, g3, b3, x1, y1, r1, g1, b1,
@@ -526,6 +510,17 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
         )
       }
     } else {
+      if (edge1) {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3,
+          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2
+        )
+      } else {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1
+        )
+      }
       if (edge2) {
         between2d(pixels,
           x1, y1, r1, g1, b1, x3, y3, r3, g3, b3,
@@ -539,7 +534,6 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
       }
     }
   } else if (zero) {
-    // [0] -> [1] | (1, 2) -> (2, 3) | edge1 -> edge2
     if (edge1) {
       if (edge2) {
         between2d(pixels,
@@ -552,21 +546,6 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
           x3, y3, r3, g3, b3, x2, y2, r2, g2, b2
         )
       }
-    } else {
-      if (edge2) {
-        between2d(pixels,
-          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1,
-          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3
-        )
-      } else {
-        between2d(pixels,
-          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1,
-          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2
-        )
-      }
-    }
-    // [0] -> [2] | (1, 2) -> (3, 1) | edge1 -> edge3
-    if (edge1) {
       if (edge3) {
         between2d(pixels,
           x1, y1, r1, g1, b1, x2, y2, r2, g2, b2,
@@ -580,6 +559,17 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
         )
       }
     } else {
+      if (edge2) {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1,
+          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3
+        )
+      } else {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2
+        )
+      }
       if (edge3) {
         between2d(pixels,
           x2, y2, r2, g2, b2, x1, y1, r1, g1, b1,
@@ -594,7 +584,6 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
       }
     }
   } else {
-    // [1] -> [2] | (2, 3) -> (3, 1) | edge2 -> edge3
     if (edge2) {
       if (edge3) {
         between2d(pixels,
@@ -607,21 +596,6 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
           x1, y1, r1, g1, b1, x3, y3, r3, g3, b3
         )
       }
-    } else {
-      if (edge3) {
-        between2d(pixels,
-          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2,
-          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1
-        )
-      } else {
-        between2d(pixels,
-          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2,
-          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3
-        )
-      }
-    }
-    // [1] -> [0] | (2, 3) -> (1, 2) | edge2 -> edge1
-    if (edge2) {
       if (edge1) {
         between2d(pixels,
           x2, y2, r2, g2, b2, x3, y3, r3, g3, b3,
@@ -634,6 +608,17 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
         )
       }
     } else {
+      if (edge3) {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2,
+          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1
+        )
+      } else {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3
+        )
+      }
       if (edge1) {
         between2d(pixels,
           x3, y3, r3, g3, b3, x2, y2, r2, g2, b2,
