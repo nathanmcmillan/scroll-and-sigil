@@ -373,122 +373,100 @@ function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
   }
 }
 
-function edge2d(x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
-  if (y1 < y2) {
-    this.r1 = r1
-    this.g1 = g1
-    this.b1 = b1
+function span2d(pixels,
+  x1,
+  r1,
+  g1,
+  b1,
+  x2,
+  r2,
+  g2,
+  b2,
+  y) {
 
-    this.x1 = x1
-    this.y1 = y1
-
-    this.r2 = r2
-    this.g2 = g2
-    this.b2 = b2
-
-    this.x2 = x2
-    this.y2 = y2
-  } else {
-    this.r1 = r2
-    this.g1 = g2
-    this.b1 = b2
-
-    this.x1 = x2
-    this.y1 = y2
-
-    this.r2 = r1
-    this.g2 = g1
-    this.b2 = b1
-
-    this.x2 = x1
-    this.y2 = y1
-  }
-}
-
-function span2d(x1, x2, r1, g1, b1, r2, g2, b2) {
-  if (x1 < x2) {
-    this.r1 = r1
-    this.g1 = g1
-    this.b1 = b1
-
-    this.x1 = x1
-
-    this.r2 = r2
-    this.g2 = g2
-    this.b2 = b2
-
-    this.x2 = x2
-  } else {
-    this.r1 = r2
-    this.g1 = g2
-    this.b1 = b2
-
-    this.x1 = x2
-
-    this.r2 = r1
-    this.g2 = g1
-    this.b2 = b1
-
-    this.x2 = x1
-  }
-}
-
-function dspan2d(pixels, s, y) {
-  const dx = s.x2 - s.x1
+  const dx = x2 - x1
   if (dx === 0) return
 
-  const dr = s.r2 - s.r1
-  const dg = s.g2 - s.g1
-  const db = s.b2 - s.b1
+  const dr = r2 - r1
+  const dg = g2 - g1
+  const db = b2 - b1
 
   let factor = 0.0
   const step = 1.0 / dx
 
-  for (let x = Math.round(s.x1); x < s.x2; x++) {
-    const r = s.r1 + dr * factor
-    const g = s.g1 + dg * factor
-    const b = s.b1 + db * factor
+  for (let x = Math.round(x1); x < x2; x++) {
+    const r = r1 + dr * factor
+    const g = g1 + dg * factor
+    const b = b1 + db * factor
 
     pixel2d(pixels, x, y, Math.round(r), Math.round(g), Math.round(b))
     factor += step
   }
 }
 
-function between2d(pixels, e1, e2) {
-  const e1dy = e1.y2 - e1.y1
+function between2d(pixels,
+  x1, y1, r1, g1, b1, x2, y2, r2, g2, b2,
+  x3, y3, r3, g3, b3, x4, y4, r4, g4, b4
+) {
+  const e1dy = y2 - y1
   if (e1dy === 0) return
 
-  const e2dy = e2.y2 - e2.y1
+  const e2dy = y4 - y3
   if (e2dy === 0) return
 
-  const e1dx = e1.x2 - e1.x1
-  const e2dx = e2.x2 - e2.x1
+  const e1dx = x2 - x1
+  const e2dx = x4 - x3
 
-  const e1dr = e1.r2 - e1.r1
-  const e1dg = e1.g2 - e1.g1
-  const e1db = e1.b2 - e1.b1
+  const e1dr = r2 - r1
+  const e1dg = g2 - g1
+  const e1db = b2 - b1
 
-  const e2dr = e2.r2 - e2.r1
-  const e2dg = e2.g2 - e2.g1
-  const e2db = e2.b2 - e2.b1
+  const e2dr = r4 - r3
+  const e2dg = g4 - g3
+  const e2db = b4 - b3
 
-  let factor1 = (e2.y1 - e1.y1) / e1dy
+  let factor1 = (y3 - y1) / e1dy
   let factor2 = 0
 
   const step1 = 1.0 / e1dy
   const step2 = 1.0 / e2dy
 
-  for (let y = e2.y1; y < e2.y2; y++) {
-    const r1 = e1.r1 + e1dr * factor1
-    const g1 = e1.g1 + e1dg * factor1
-    const b1 = e1.b1 + e1db * factor1
+  for (let y = y3; y < y4; y++) {
 
-    const r2 = e2.r1 + e2dr * factor2
-    const g2 = e2.g1 + e2dg * factor2
-    const b2 = e2.b1 + e2db * factor2
+    const sr1 = r1 + e1dr * factor1
+    const sg1 = g1 + e1dg * factor1
+    const sb1 = b1 + e1db * factor1
 
-    const s = new span2d(e1.x1 + e1dx * factor1, e2.x1 + e2dx * factor2, r1, g1, b1, r2, g2, b2)
-    dspan2d(pixels, s, Math.round(y))
+    const sr2 = r3 + e2dr * factor2
+    const sg2 = g3 + e2dg * factor2
+    const sb2 = b3 + e2db * factor2
+
+    const sx1 = x1 + e1dx * factor1
+    const sx2 = x3 + e2dx * factor2
+
+    if (sx1 < sx2) {
+      span2d(pixels,
+        sx1,
+        sr1,
+        sg1,
+        sb1,
+        sx2,
+        sr2,
+        sg2,
+        sb2,
+        Math.round(y))
+    } else {
+      span2d(pixels,
+        sx2,
+        sr2,
+        sg2,
+        sb2,
+        sx1,
+        sr1,
+        sg1,
+        sb1,
+        Math.round(y))
+    }
 
     factor1 += step1
     factor2 += step2
@@ -496,28 +474,178 @@ function between2d(pixels, e1, e2) {
 }
 
 function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, g3, b3) {
-  const edges = [
-    new edge2d(x1, y1, r1, g1, b1, x2, y2, r2, g2, b2),
-    new edge2d(x2, y2, r2, g2, b2, x3, y3, r3, g3, b3),
-    new edge2d(x3, y3, r3, g3, b3, x1, y1, r1, g1, b1),
-  ]
-  let lb = edges[0].y2 - edges[0].y1
-  let eb = 0
-  let length = edges[1].y2 - edges[1].y1
-  if (length > lb) {
-    lb = length
-    eb = 1
+  const edge1 = y1 < y2
+  const edge2 = y2 < y3
+  const edge3 = y3 < y1
+  let longest = edge1 ? (y2 - y1) : (y1 - y2)
+  let zero = true
+  let length = edge2 ? (y3 - y2) : (y2 - y3)
+  if (length > longest) {
+    longest = length
+    zero = false
   }
-  length = edges[2].y2 - edges[2].y1
-  if (length > lb) {
-    between2d(pixels, edges[2], edges[0])
-    between2d(pixels, edges[2], edges[1])
-  } else if (eb === 0) {
-    between2d(pixels, edges[0], edges[1])
-    between2d(pixels, edges[0], edges[2])
-  } else if (eb === 1) {
-    between2d(pixels, edges[1], edges[2])
-    between2d(pixels, edges[1], edges[0])
+  length = edge3 ? (y1 - y3) : (y3 - y1)
+  if (length > longest) {
+    // [2] -> [0] | (3, 1) -> (1, 2) | edge3 -> edge1
+    if (edge3) {
+      if (edge1) {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1,
+          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2
+        )
+      } else {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1
+        )
+      }
+    } else {
+      if (edge1) {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3,
+          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2
+        )
+      } else {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1
+        )
+      }
+    }
+    // [2] -> [1] | (3, 1) -> (2, 3) | edge3 -> edge2
+    if (edge3) {
+      if (edge2) {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1,
+          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3
+        )
+      } else {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2
+        )
+      }
+    } else {
+      if (edge2) {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3,
+          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3
+        )
+      } else {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2
+        )
+      }
+    }
+  } else if (zero) {
+    // [0] -> [1] | (1, 2) -> (2, 3) | edge1 -> edge2
+    if (edge1) {
+      if (edge2) {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2,
+          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3
+        )
+      } else {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2
+        )
+      }
+    } else {
+      if (edge2) {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1,
+          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3
+        )
+      } else {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2
+        )
+      }
+    }
+    // [0] -> [2] | (1, 2) -> (3, 1) | edge1 -> edge3
+    if (edge1) {
+      if (edge3) {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2,
+          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1
+        )
+      }
+      else {
+        between2d(pixels,
+          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3
+        )
+      }
+    } else {
+      if (edge3) {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1,
+          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1
+        )
+      }
+      else {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3
+        )
+      }
+    }
+  } else {
+    // [1] -> [2] | (2, 3) -> (3, 1) | edge2 -> edge3
+    if (edge2) {
+      if (edge3) {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3,
+          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1
+        )
+      } else {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3
+        )
+      }
+    } else {
+      if (edge3) {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2,
+          x3, y3, r3, g3, b3, x1, y1, r1, g1, b1
+        )
+      } else {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2,
+          x1, y1, r1, g1, b1, x3, y3, r3, g3, b3
+        )
+      }
+    }
+    // [1] -> [0] | (2, 3) -> (1, 2) | edge2 -> edge1
+    if (edge2) {
+      if (edge1) {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3,
+          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2
+        )
+      } else {
+        between2d(pixels,
+          x2, y2, r2, g2, b2, x3, y3, r3, g3, b3,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1
+        )
+      }
+    } else {
+      if (edge1) {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2,
+          x1, y1, r1, g1, b1, x2, y2, r2, g2, b2
+        )
+      } else {
+        between2d(pixels,
+          x3, y3, r3, g3, b3, x2, y2, r2, g2, b2,
+          x2, y2, r2, g2, b2, x1, y1, r1, g1, b1
+        )
+      }
+    }
   }
 }
 
