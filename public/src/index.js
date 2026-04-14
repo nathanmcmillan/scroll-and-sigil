@@ -9,6 +9,12 @@ const TOUCH = []
 let ACTIVE = true
 let PREVIOUS_TICK = 0
 
+const PERFORMANCE = false
+let performanceLow = Number.MAX_VALUE
+let performanceHigh = -Number.MAX_VALUE
+let performanceTick = 0
+let performanceStart = 0.0
+
 function touchIndexById(identifier) {
   for (let i = 0; i < TOUCH.length; i++) {
     if (TOUCH[i].identifier === identifier) return i
@@ -19,8 +25,27 @@ function touchIndexById(identifier) {
 function tick(time) {
   if (ACTIVE && time - PREVIOUS_TICK >= 15.999) {
     PREVIOUS_TICK = time
+
+    let stamp
+    if (PERFORMANCE) stamp = performance.now()
+
     client.update()
     client.draw()
+
+    if (PERFORMANCE) {
+      const diff = performance.now() - stamp
+      if (diff < performanceLow) performanceLow = diff
+      if (diff > performanceHigh) performanceHigh = diff
+      performanceTick++
+      if (performanceTick === 16) {
+        const average = (performance.now() - performanceStart) / performanceTick
+        console.info('cost (low: ' + performanceLow + ') (high: ' + performanceHigh + ') frames:', average)
+        performanceLow = Number.MAX_VALUE
+        performanceHigh = -Number.MAX_VALUE
+        performanceTick = 0
+        performanceStart = performance.now()
+      }
+    }
   }
   window.requestAnimationFrame(tick)
 }

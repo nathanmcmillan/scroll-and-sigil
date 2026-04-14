@@ -218,63 +218,87 @@ export async function init(scale, screen) {
 
 export function update() { }
 
+const PERFORMANCE = false
+
+const SHIFT = 16
+const SHIFT_MASK = (1 << SHIFT) - 1
+
 export function draw() {
   const canvas = CANVAS
   const context = CONTEXT
 
   context.clearRect(0, 0, canvas.width, canvas.height)
 
-  const font = images.IMAGES.get('font')
-  const image = images.IMAGES.get('tiles')
+  // const font = images.IMAGES.get('font')
+  // const image = images.IMAGES.get('tiles')
 
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLUMNS; c++) {
-      const sprite = tiles.SPRITES[TILES[c + r * COLUMNS]]
-      context.drawImage(
-        image,
-        sprite[0],
-        sprite[1],
-        sprite[2],
-        sprite[3],
-        c * tiles.WIDTH - X,
-        r * tiles.HEIGHT - Y,
-        tiles.WIDTH,
-        tiles.HEIGHT,
-      )
-    }
-  }
+  // for (let r = 0; r < ROWS; r++) {
+  //   for (let c = 0; c < COLUMNS; c++) {
+  //     const sprite = tiles.SPRITES[TILES[c + r * COLUMNS]]
+  //     context.drawImage(
+  //       image,
+  //       sprite[0],
+  //       sprite[1],
+  //       sprite[2],
+  //       sprite[3],
+  //       c * tiles.WIDTH - X,
+  //       r * tiles.HEIGHT - Y,
+  //       tiles.WIDTH,
+  //       tiles.HEIGHT,
+  //     )
+  //   }
+  // }
 
-  const description = EVENT === null ? 'idle' : event.description(EVENT)
-  render.text(context, font, 10, 10, description, 2, render.FONT)
+  // const description = EVENT === null ? 'idle' : event.description(EVENT)
+  // render.text(context, font, 10, 10, description, 2, render.FONT)
 
-  const buttons = images.IMAGES.get('interface')
-  drawButton(context, buttons, TRAVEL_BUTTON)
+  // const buttons = images.IMAGES.get('interface')
+  // drawButton(context, buttons, TRAVEL_BUTTON)
 
   const buffer = context.getImageData(0, 0, canvas.width, canvas.height)
   const pixels = buffer.data
 
-  pixel2d(pixels, 10, 30, 255, 0, 0)
-  line2d(pixels, 20, 40, 255, 0, 0, 30, 50, 255, 0, 0)
-  triangle2d(pixels, 20, 60, 255, 0, 0, 50, 80, 255, 255, 0, 30, 90, 255, 0, 255)
+  if (PERFORMANCE) {
+    for (let p = 0; p < 200; p++) {
+      for (let f = 0; f < 200; f++) {
+        // 40,000 triangles
+        // top:     77
+        // current: 85
+        triangle2d(pixels, p, f, 255, 0, 0, p + 16, f, 0, 255, 0, p + 16, f + 24, 0, 0, 255)
+      }
+    }
+  }
+
+  triangle2d(pixels, 0, 0, 100, 149, 237, 300, 0, 100, 149, 237, 300, 200, 100, 149, 237)
+  triangle2d(pixels, 0, 0, 100, 149, 237, 0, 200, 100, 149, 237, 300, 200, 100, 149, 237)
+
+  // triangle2d(pixels, 20, 60, 255, 0, 0, 50, 80, 255, 255, 0, 30, 90, 255, 0, 255)
 
   const tiles = images.IMAGE_PIXELS.get('tiles')
   sprite2d(pixels, 20, 120, tiles, 0, 0, 16, 24)
 
-  const sr = 16.0 / tiles.width
-  const sb = 24.0 / tiles.height - 0.005
-  texture2d(pixels, tiles, 50, 120, 0.0, 0.0, 66, 120, sr, 0.0, 66, 144, sr, sb)
-  texture2d(pixels, tiles, 50, 120, 0.0, 0.0, 66, 144, sr, sb, 50, 144, 0.0, sb)
+  // triangle2d(pixels, 80, 120, 255, 0, 0, 96, 120, 0, 255, 0, 96, 144, 0, 0, 255)
 
-  triangle2d(pixels, 80, 120, 255, 0, 0, 96, 120, 0, 255, 0, 96, 144, 0, 0, 255)
+  const sr = 16 << SHIFT
+  const sb = 24 << SHIFT
 
-  texture2d(pixels, tiles, 66, 150, 0.0, 0.0, 66, 166, sr, 0.0, 42, 166, sr, sb)
-  texture2d(pixels, tiles, 66, 150, 0.0, 0.0, 42, 166, sr, sb, 42, 150, 0.0, sb)
+  // mode2d(pixels, tiles, 50, 120, 66, 120, 50, 144, 66, 144, 0.0, 0.0, sr, sb)
 
-  // mode2d(pixels, 60, 100, 76, 100, 76, 124, 60, 124, tiles, 0, 0, 16, 24)
+  // texture2d(pixels, tiles, 66, 150, 0.0, 0.0, 66, 166, sr, 0.0, 42, 166, sr, sb)
+  // texture2d(pixels, tiles, 66, 150, 0.0, 0.0, 42, 166, sr, sb, 42, 150, 0.0, sb)
+
+  console.log('------------------------------')
+  // mode2d(pixels, tiles, 200, 120, 232, 120, 200, 168, 232, 168, 0, 0, sr, sb)
+  texture2d(pixels, tiles, 200, 120, 0, 0, 232, 120, sr, 0, 200, 168, 0, sb)
 
   blit(context, buffer)
 
   SCREEN_CONTEXT.drawImage(CANVAS, 0, 0, CANVAS.width, CANVAS.height, 0, 0, SCREEN.width, SCREEN.height)
+}
+
+function mode2d(pixels, image, x1, y1, x2, y2, x3, y3, x4, y4, sl, st, sr, sb) {
+  texture2d(pixels, image, x1, y1, sl, st, x2, y2, sr, st, x3, y3, sl, sb)
+  texture2d(pixels, image, x3, y3, sl, sb, x2, y2, sr, st, x4, y4, sr, sb)
 }
 
 function pixel2d(pixels, x, y, r, g, b) {
@@ -302,24 +326,6 @@ function sprite2d(pixels, x, y, image, sx, sy, sw, sh) {
     s += CANVAS_WIDTH
   }
 }
-
-// function mode2d(pixels, x1, y1, x2, y2, x3, y3, x4, y4, image, sx, sy, sw, sh) {
-// const iw = image.width
-// const src = image.pixels
-// let s = y * CANVAS_WIDTH
-// let f = sy * iw
-// for (let r = 0; r < sh; r++) {
-//   for (let c = 0; c < sw; c++) {
-//     const p = (sx + c + f) * 4
-//     const i = (x + c + s) * 4
-//     pixels[i] = src[p]
-//     pixels[i + 1] = src[p + 1]
-//     pixels[i + 2] = src[p + 2]
-//   }
-//   f += iw
-//   s += CANVAS_WIDTH
-// }
-// }
 
 function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
 
@@ -373,16 +379,7 @@ function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
   }
 }
 
-function span2d(pixels,
-  x1,
-  r1,
-  g1,
-  b1,
-  x2,
-  r2,
-  g2,
-  b2,
-  y) {
+function span2d(pixels, x1, r1, g1, b1, x2, r2, g2, b2, line) {
 
   const dx = x2 - x1
   if (dx === 0) return
@@ -394,20 +391,36 @@ function span2d(pixels,
   let factor = 0.0
   const step = 1.0 / dx
 
-  for (let x = Math.round(x1); x < x2; x++) {
-    const r = r1 + dr * factor
-    const g = g1 + dg * factor
-    const b = b1 + db * factor
+  let index = Math.round(x1)
+  if (index < 0) {
+    factor = -index * step
+    index = line * 4
+  } else {
+    index = (index + line) * 4
+  }
 
-    pixel2d(pixels, x, y, Math.round(r), Math.round(g), Math.round(b))
+  const end = (x2 > CANVAS_WIDTH) ? (CANVAS_WIDTH + line) * 4 : (Math.ceil(x2) + line) * 4
+
+  while (index < end) {
+
+    const r = r1 + Math.round(dr * factor)
+    const g = g1 + Math.round(dg * factor)
+    const b = b1 + Math.round(db * factor)
+
+    pixels[index] = r
+    pixels[index + 1] = g
+    pixels[index + 2] = b
+
+    index += 4
+
     factor += step
   }
 }
 
 function between2d(pixels,
   x1, y1, r1, g1, b1, x2, y2, r2, g2, b2,
-  x3, y3, r3, g3, b3, x4, y4, r4, g4, b4
-) {
+  x3, y3, r3, g3, b3, x4, y4, r4, g4, b4) {
+
   const e1dy = y2 - y1
   if (e1dy === 0) return
 
@@ -426,12 +439,23 @@ function between2d(pixels,
   const e2db = b4 - b3
 
   let factor1 = (y3 - y1) / e1dy
-  let factor2 = 0
+  let factor2 = 0.0
 
   const step1 = 1.0 / e1dy
   const step2 = 1.0 / e2dy
 
-  for (let y = y3; y < y4; y++) {
+  let line = Math.round(y3)
+  if (line < 0) {
+    factor1 += -line * step1
+    factor2 = -line * step2
+    line = 0
+  } else {
+    line *= CANVAS_WIDTH
+  }
+
+  const end = (y4 > CANVAS_HEIGHT) ? CANVAS_HEIGHT * CANVAS_WIDTH : Math.ceil(y4) * CANVAS_WIDTH
+
+  while (line < end) {
 
     const sr1 = r1 + e1dr * factor1
     const sg1 = g1 + e1dg * factor1
@@ -445,31 +469,15 @@ function between2d(pixels,
     const sx2 = x3 + e2dx * factor2
 
     if (sx1 < sx2) {
-      span2d(pixels,
-        sx1,
-        sr1,
-        sg1,
-        sb1,
-        sx2,
-        sr2,
-        sg2,
-        sb2,
-        Math.round(y))
+      span2d(pixels, sx1, sr1, sg1, sb1, sx2, sr2, sg2, sb2, line)
     } else {
-      span2d(pixels,
-        sx2,
-        sr2,
-        sg2,
-        sb2,
-        sx1,
-        sr1,
-        sg1,
-        sb1,
-        Math.round(y))
+      span2d(pixels, sx2, sr2, sg2, sb2, sx1, sr1, sg1, sb1, line)
     }
 
     factor1 += step1
     factor2 += step2
+
+    line += CANVAS_WIDTH
   }
 }
 
@@ -634,149 +642,323 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
   }
 }
 
-function texel2d(x1, y1, u1, v1, x2, y2, u2, v2) {
-  if (y1 < y2) {
-    this.u1 = u1
-    this.v1 = v1
+function texspan2d(pixels, image, x1, u1, v1, x2, u2, v2, line) {
 
-    this.x1 = x1
-    this.y1 = y1
+  if (x2 > CANVAS_WIDTH) x2 = CANVAS_WIDTH
 
-    this.u2 = u2
-    this.v2 = v2
-
-    this.x2 = x2
-    this.y2 = y2
-  } else {
-    this.u1 = u2
-    this.v1 = v2
-
-    this.x1 = x2
-    this.y1 = y2
-
-    this.u2 = u1
-    this.v2 = v1
-
-    this.x2 = x1
-    this.y2 = y1
-  }
-}
-
-function texspan2d(x1, x2, u1, v1, u2, v2) {
-  if (x1 < x2) {
-    this.u1 = u1
-    this.v1 = v1
-
-    this.x1 = x1
-
-    this.u2 = u2
-    this.v2 = v2
-
-    this.x2 = x2
-  } else {
-    this.u1 = u2
-    this.v1 = v2
-
-    this.x1 = x2
-
-    this.u2 = u1
-    this.v2 = v1
-
-    this.x2 = x1
-  }
-}
-
-function dtexspan2d(pixels, image, s, y) {
-  const dx = s.x2 - s.x1
+  const dx = x2 - x1
   if (dx === 0) return
 
-  const du = s.u2 - s.u1
-  const dv = s.v2 - s.v1
-
-  // console.log('^', s.x1, s.x2)
+  const du = u2 - u1
+  const dv = v2 - v1
 
   let factor = 0.0
   const step = 1.0 / dx
 
   const src = image.pixels
   const wide = image.width
-  const high = image.height
 
-  for (let x = Math.round(s.x1); x < s.x2; x++) {
-    const u = s.u1 + du * factor
-    const v = s.v1 + dv * factor
+  let x = Math.round(x1)
+  if (x < 0) {
+    factor += -x * step
+    x = 0
+  }
 
-    // if (Math.round(v * high) >= 24.0) console.log('--->', x, y, '|', s.u1, du, factor, '|', s.v1, dv, factor, '|', Math.round(u * wide), Math.round(v * high))
+  for (; x < x2; x++) {
 
-    const t = (Math.round(u * wide) + Math.round(v * high) * wide) * 4
+    const u = u1 + du * factor
+    const v = v1 + dv * factor
+
+    // const t = (Math.round(u) + Math.round(v) * wide) * 4
+
+    const cu = Math.floor(u)
+
+    let cv = Math.floor(v)
+    // if (v1 > v2) {
+    //   if (cv >= v1) cv--
+    // } else {
+    //   if (cv >= v2) cv--
+    // }
+
+    // if (cu >= 16.0) {
+    //   console.log('bleed >', cu, '|', u1, u2, '|', v1, v2, '|', dv, '*', factor, '(', step, ')')
+    // }
+
+    // ----> 0 12 | 0 7.66666666666667  | 12.499999999999996 12.499999999999996 | 7.66666666666667 0 * 0 ( 0.06521739130434778 ) client.js:685:15
+    // ----> 0 12 | 0 7.333333333333336 | 12.999999999999996 12.999999999999996 | 7.333333333333336 0 * 0 ( 0.0681818181818181 )
+    // ----> 0 13 | 0 7.000000000000002 | 13.499999999999996 13.499999999999996 | 7.000000000000002 0 * 0 ( 0.07142857142857142 ) client.js:685:15
+    // ----> 0 13 | 0 6.666666666666668 | 13.999999999999998 13.999999999999998 | 6.666666666666668 0 * 0 ( 0.07499999999999994 ) client.js:685:15
+    // ----> 0 14 | 0 6.333333333333334 | 14.5 14.5                             | 6.333333333333334 0 * 0 ( 0.0789473684210527 ) client.js:685:15
+    // ----> 0 15 | 0 6                 | 15 15                                 | 6 0 * 0 ( 0.08333333333333333 ) client.js:685:15
+    // ----> 0 15 | 0 5.666666666666666 | 15.5 15.5                             | 5.666666666666666 0 * 0 ( 0.08823529411764698 )
+
+    // if (x === 200) {
+    //   console.log('---->', cu, cv, '|', u1, u2, '|', v1, v2, '|', du, dv, '*', factor, '(', step, ')')
+    // }
+
+    const t = (cu + cv * wide) * 4
 
     const r = src[t]
     const g = src[t + 1]
     const b = src[t + 2]
 
-    pixel2d(pixels, x, y, r, g, b)
+    const i = (x + line) * 4
+
+    pixels[i] = r
+    pixels[i + 1] = g
+    pixels[i + 2] = b
+
     factor += step
   }
 }
 
-function texbetween2d(pixels, image, e1, e2) {
-  const e1dy = e1.y2 - e1.y1
+function texbetween2d(pixels, image,
+  x1, y1, u1, v1, x2, y2, u2, v2,
+  x3, y3, u3, v3, x4, y4, u4, v4) {
+
+  if (y2 - y1 === 0) console.log('skip [a]')
+  if (y4 - y3 === 0) console.log('skip [b]')
+
+  const e1dy = y2 - y1
   if (e1dy === 0) return
 
-  const e2dy = e2.y2 - e2.y1
+  const e2dy = y4 - y3
   if (e2dy === 0) return
 
-  const e1dx = e1.x2 - e1.x1
-  const e2dx = e2.x2 - e2.x1
+  const e1dx = x2 - x1
+  const e2dx = x4 - x3
 
-  const e1du = e1.u2 - e1.u1
-  const e1dv = e1.v2 - e1.v1
+  const e1du = u2 - u1
+  const e1dv = v2 - v1
 
-  const e2du = e2.u2 - e2.u1
-  const e2dv = e2.v2 - e2.v1
+  const e2du = u4 - u3
+  const e2dv = v4 - v3
 
-  let factor1 = (e2.y1 - e1.y1) / e1dy
-  let factor2 = 0
+  let factor1 = (y3 - y1) / e1dy
+  let factor2 = 0.0
 
   const step1 = 1.0 / e1dy
   const step2 = 1.0 / e2dy
 
-  for (let y = e2.y1; y < e2.y2; y++) {
-    const u1 = e1.u1 + e1du * factor1
-    const v1 = e1.v1 + e1dv * factor1
+  // let fixedFactor1 = ((y3 - y1) << SHIFT) / (e1dy << SHIFT)
 
-    const u2 = e2.u1 + e2du * factor2
-    const v2 = e2.v1 + e2dv * factor2
+  // const fixedStep1 = Math.floor((1 << SHIFT) / e1dy)
+  // const fixedStep2 = 1.0 / e2dy
 
-    const s = new texspan2d(e1.x1 + e1dx * factor1, e2.x1 + e2dx * factor2, u1, v1, u2, v2)
-    // 50, 120, 0.0, 0.0, 66, 120, 1.0, 0.0, 66, 144, 1.0, 1.0
-    // console.log(e1.x1, e1dx, factor1, '|', e2.x1, e2dx, factor2, '|', y, '|', u1, v1, '|', u2, v2)
-    dtexspan2d(pixels, image, s, Math.round(y))
-    // if (Math.round(y) > 120) throw 'BREAK'
-    // console.log('----------')
+  const decimal = (fixedStep1 & SHIFT_MASK)
+  const fraction = decimal / (1 << SHIFT)
+
+  console.log('FLOAT', step1, 'FIXED', fixedStep1, 'NUMBER', (fixedStep1 >> SHIFT), 'DECIMAL', decimal, 'FRACTION', fraction)
+
+  let y = Math.round(y3)
+  if (y < 0) {
+    factor1 += -y * step1
+    factor2 += -y * step2
+    y = 0
+  }
+
+  let f = Math.ceil(y4)
+  if (f > CANVAS_HEIGHT) f = CANVAS_HEIGHT
+
+  const end = f * CANVAS_WIDTH
+
+  let line = y * CANVAS_WIDTH
+
+  // DEBUG
+  console.log(x1, y1, ',', x2, y2, ',', x3, y3, '|', e1du, e1dv, '|', e2du, e2dv, '/', factor1, factor2, '/', step1, step2)
+
+  while (line < end) {
+
+    const su1 = u1 + e1du * factor1
+    const sv1 = v1 + e1dv * factor1
+
+    const su2 = u3 + e2du * factor2
+    const sv2 = v3 + e2dv * factor2
+
+    const sx1 = x1 + e1dx * factor1
+    const sx2 = x3 + e2dx * factor2
+
+    // ----> 2 | 2.5                2.5
+    // ----> 2 | 2.9999999999999996 2.9999999999999996
+    // ----> 3 | 3.4999999999999996 3.4999999999999996
+    // ----> 4 | 4                  4
+    // ----> 4 | 4.5                4.5
+
+    if (sx1 < sx2) {
+      texspan2d(pixels, image, sx1, su1, sv1, sx2, su2, sv2, line)
+    } else {
+      if (line < (y + 20) * CANVAS_WIDTH) {
+        console.log('->', sx2, su2, sv2, ',', sx1, su1, sv1)
+      }
+      texspan2d(pixels, image, sx2, su2, sv2, sx1, su1, sv1, line)
+    }
 
     factor1 += step1
     factor2 += step2
+
+    line += CANVAS_WIDTH
   }
 }
 
 function texture2d(pixels, image, x1, y1, u1, v1, x2, y2, u2, v2, x3, y3, u3, v3) {
-  const edges = [
-    new texel2d(x1, y1, u1, v1, x2, y2, u2, v2),
-    new texel2d(x2, y2, u2, v2, x3, y3, u3, v3),
-    new texel2d(x3, y3, u3, v3, x1, y1, u1, v1),
-  ]
-  let lb = 0
-  let eb = 0
-  for (let i = 0; i < 3; i++) {
-    const length = edges[i].y2 - edges[i].y1
-    if (length > lb) {
-      lb = length
-      eb = i
+  const edge1 = y1 < y2
+  const edge2 = y2 < y3
+  const edge3 = y3 < y1
+  let longest = edge1 ? (y2 - y1) : (y1 - y2)
+  let zero = true
+  let length = edge2 ? (y3 - y2) : (y2 - y3)
+  if (length > longest) {
+    longest = length
+    zero = false
+  }
+  length = edge3 ? (y1 - y3) : (y3 - y1)
+  if (length > longest) {
+    if (edge3) {
+      if (edge1) {
+        texbetween2d(pixels, image,
+          x3, y3, u3, v3, x1, y1, u1, v1,
+          x1, y1, u1, v1, x2, y2, u2, v2
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x3, y3, u3, v3, x1, y1, u1, v1,
+          x2, y2, u2, v2, x1, y1, u1, v1
+        )
+      }
+      if (edge2) {
+        texbetween2d(pixels, image,
+          x3, y3, u3, v3, x1, y1, u1, v1,
+          x2, y2, u2, v2, x3, y3, u3, v3
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x3, y3, u3, v3, x1, y1, u1, v1,
+          x3, y3, u3, v3, x2, y2, u2, v2
+        )
+      }
+    } else {
+      if (edge1) {
+        texbetween2d(pixels, image,
+          x1, y1, u1, v1, x3, y3, u3, v3,
+          x1, y1, u1, v1, x2, y2, u2, v2
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x1, y1, u1, v1, x3, y3, u3, v3,
+          x2, y2, u2, v2, x1, y1, u1, v1
+        )
+      }
+      if (edge2) {
+        texbetween2d(pixels, image,
+          x1, y1, u1, v1, x3, y3, u3, v3,
+          x2, y2, u2, v2, x3, y3, u3, v3
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x1, y1, u1, v1, x3, y3, u3, v3,
+          x3, y3, u3, v3, x2, y2, u2, v2
+        )
+      }
+    }
+  } else if (zero) {
+    if (edge1) {
+      if (edge2) {
+        texbetween2d(pixels, image,
+          x1, y1, u1, v1, x2, y2, u2, v2,
+          x2, y2, u2, v2, x3, y3, u3, v3
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x1, y1, u1, v1, x2, y2, u2, v2,
+          x3, y3, u3, v3, x2, y2, u2, v2
+        )
+      }
+      if (edge3) {
+        texbetween2d(pixels, image,
+          x1, y1, u1, v1, x2, y2, u2, v2,
+          x3, y3, u3, v3, x1, y1, u1, v1
+        )
+      }
+      else {
+        texbetween2d(pixels, image,
+          x1, y1, u1, v1, x2, y2, u2, v2,
+          x1, y1, u1, v1, x3, y3, u3, v3
+        )
+      }
+    } else {
+      if (edge2) {
+        texbetween2d(pixels, image,
+          x2, y2, u2, v2, x1, y1, u1, v1,
+          x2, y2, u2, v2, x3, y3, u3, v3
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x2, y2, u2, v2, x1, y1, u1, v1,
+          x3, y3, u3, v3, x2, y2, u2, v2
+        )
+      }
+      if (edge3) {
+        texbetween2d(pixels, image,
+          x2, y2, u2, v2, x1, y1, u1, v1,
+          x3, y3, u3, v3, x1, y1, u1, v1
+        )
+      }
+      else {
+        texbetween2d(pixels, image,
+          x2, y2, u2, v2, x1, y1, u1, v1,
+          x1, y1, u1, v1, x3, y3, u3, v3
+        )
+      }
+    }
+  } else {
+    if (edge2) {
+      if (edge3) {
+        texbetween2d(pixels, image,
+          x2, y2, u2, v2, x3, y3, u3, v3,
+          x3, y3, u3, v3, x1, y1, u1, v1
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x2, y2, u2, v2, x3, y3, u3, v3,
+          x1, y1, u1, v1, x3, y3, u3, v3
+        )
+      }
+      if (edge1) {
+        texbetween2d(pixels, image,
+          x2, y2, u2, v2, x3, y3, u3, v3,
+          x1, y1, u1, v1, x2, y2, u2, v2
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x2, y2, u2, v2, x3, y3, u3, v3,
+          x2, y2, u2, v2, x1, y1, u1, v1
+        )
+      }
+    } else {
+      if (edge3) {
+        texbetween2d(pixels, image,
+          x3, y3, u3, v3, x2, y2, u2, v2,
+          x3, y3, u3, v3, x1, y1, u1, v1
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x3, y3, u3, v3, x2, y2, u2, v2,
+          x1, y1, u1, v1, x3, y3, u3, v3
+        )
+      }
+      if (edge1) {
+        texbetween2d(pixels, image,
+          x3, y3, u3, v3, x2, y2, u2, v2,
+          x1, y1, u1, v1, x2, y2, u2, v2
+        )
+      } else {
+        texbetween2d(pixels, image,
+          x3, y3, u3, v3, x2, y2, u2, v2,
+          x2, y2, u2, v2, x1, y1, u1, v1
+        )
+      }
     }
   }
-  texbetween2d(pixels, image, edges[eb], edges[(eb + 1) % 3])
-  texbetween2d(pixels, image, edges[eb], edges[(eb + 2) % 3])
 }
 
 function blit(context, buffer) {
