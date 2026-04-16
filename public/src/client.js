@@ -221,7 +221,31 @@ export function update() { }
 const PERFORMANCE = false
 
 const SHIFT = 16
-const SHIFT_MASK = (1 << SHIFT) - 1
+const SHIFT_UNIT = 1 << SHIFT
+const SHIFT_MASK = SHIFT_UNIT - 1
+
+const SHIFT_BIG = 16n
+const SHIFT_UNIT_BIG = 1n << SHIFT_BIG
+
+function fixedAdd(a, b) {
+  return a + b
+}
+
+function fixedMul(a, b) {
+  return (a * b) >> SHIFT
+}
+
+function fixedDiv(a, b) {
+  return (a / b) * SHIFT_UNIT
+}
+
+function fixedToFloat(f) {
+  return f / SHIFT_UNIT
+}
+
+function floatToFixed(f) {
+  return Math.round(f * SHIFT_UNIT)
+}
 
 export function draw() {
   const canvas = CANVAS
@@ -279,8 +303,18 @@ export function draw() {
 
   // triangle2d(pixels, 80, 120, 255, 0, 0, 96, 120, 0, 255, 0, 96, 144, 0, 0, 255)
 
+  // const sr = 16
+  // const sb = 24
+
+  const sl = 0
+  const st = 0
   const sr = 16 << SHIFT
   const sb = 24 << SHIFT
+
+  // const sl = floatToFixed(0.5)
+  // const st = floatToFixed(0.5)
+  // const sr = floatToFixed(16.5)
+  // const sb = floatToFixed(24.5)
 
   // mode2d(pixels, tiles, 50, 120, 66, 120, 50, 144, 66, 144, 0.0, 0.0, sr, sb)
 
@@ -289,7 +323,8 @@ export function draw() {
 
   console.log('------------------------------')
   // mode2d(pixels, tiles, 200, 120, 232, 120, 200, 168, 232, 168, 0, 0, sr, sb)
-  texture2d(pixels, tiles, 200, 120, 0, 0, 232, 120, sr, 0, 200, 168, 0, sb)
+  // texture2d(pixels, tiles, 200, 120, sl, st, 232, 120, sr, st, 200, 168, sl, sb)
+  texture2d(pixels, tiles, 232, 120, sr, st, 232, 168, sr, sb, 200, 168, sl, sb)
 
   blit(context, buffer)
 
@@ -644,7 +679,7 @@ function triangle2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2, x3, y3, r3, 
 
 function texspan2d(pixels, image, x1, u1, v1, x2, u2, v2, line) {
 
-  if (x2 > CANVAS_WIDTH) x2 = CANVAS_WIDTH
+  // if (x2 > CANVAS_WIDTH) x2 = CANVAS_WIDTH
 
   const dx = x2 - x1
   if (dx === 0) return
@@ -652,51 +687,53 @@ function texspan2d(pixels, image, x1, u1, v1, x2, u2, v2, line) {
   const du = u2 - u1
   const dv = v2 - v1
 
-  let factor = 0.0
-  const step = 1.0 / dx
+  // let factor = 0.0
+  // const step = 1.0 / dx
+
+  let factorf = 0
+  const stepf = Math.floor((SHIFT_UNIT / dx) * SHIFT_UNIT)
 
   const src = image.pixels
   const wide = image.width
 
-  let x = Math.round(x1)
-  if (x < 0) {
-    factor += -x * step
-    x = 0
-  }
+  // let x = Math.round(x1)
+  // if (x < 0) {
+  //   factor += -x * step
+  //   x = 0
+  // }
+
+  let x = Math.round(fixedToFloat(x1))
+  x2 = Math.round(fixedToFloat(x2))
 
   for (; x < x2; x++) {
 
-    const u = u1 + du * factor
-    const v = v1 + dv * factor
+    // const u = u1 + du * factor
+    // const v = v1 + dv * factor
 
     // const t = (Math.round(u) + Math.round(v) * wide) * 4
 
-    const cu = Math.floor(u)
+    const utexel = Math.floor((SHIFT_UNIT / (16 << SHIFT)) * SHIFT_UNIT)
+    const vtexel = Math.floor((SHIFT_UNIT / (24 << SHIFT)) * SHIFT_UNIT)
 
-    let cv = Math.floor(v)
-    // if (v1 > v2) {
-    //   if (cv >= v1) cv--
-    // } else {
-    //   if (cv >= v2) cv--
-    // }
+    const u = u1 + Number((BigInt(du) * BigInt(factorf)) >> SHIFT_BIG) - utexel
+    const v = v1 + Number((BigInt(dv) * BigInt(factorf)) >> SHIFT_BIG) - vtexel
 
-    // if (cu >= 16.0) {
-    //   console.log('bleed >', cu, '|', u1, u2, '|', v1, v2, '|', dv, '*', factor, '(', step, ')')
-    // }
+    // 122
+    // ----> 231 	 15 	 15.27099609375
 
-    // ----> 0 12 | 0 7.66666666666667  | 12.499999999999996 12.499999999999996 | 7.66666666666667 0 * 0 ( 0.06521739130434778 ) client.js:685:15
-    // ----> 0 12 | 0 7.333333333333336 | 12.999999999999996 12.999999999999996 | 7.333333333333336 0 * 0 ( 0.0681818181818181 )
-    // ----> 0 13 | 0 7.000000000000002 | 13.499999999999996 13.499999999999996 | 7.000000000000002 0 * 0 ( 0.07142857142857142 ) client.js:685:15
-    // ----> 0 13 | 0 6.666666666666668 | 13.999999999999998 13.999999999999998 | 6.666666666666668 0 * 0 ( 0.07499999999999994 ) client.js:685:15
-    // ----> 0 14 | 0 6.333333333333334 | 14.5 14.5                             | 6.333333333333334 0 * 0 ( 0.0789473684210527 ) client.js:685:15
-    // ----> 0 15 | 0 6                 | 15 15                                 | 6 0 * 0 ( 0.08333333333333333 ) client.js:685:15
-    // ----> 0 15 | 0 5.666666666666666 | 15.5 15.5                             | 5.666666666666666 0 * 0 ( 0.08823529411764698 )
+    // 127
+    // ----> 227 	 14 	 13.604736328125
+    // ----> 228 	 14 	 14.104690551757812
+    // ----> 229 	 15 	 14.604660034179688
+    // ----> 230 	 15 	 15.104629516601562
+    // ----> 231 	 16 	 15.604598999023438
 
-    // if (x === 200) {
-    //   console.log('---->', cu, cv, '|', u1, u2, '|', v1, v2, '|', du, dv, '*', factor, '(', step, ')')
-    // }
+    if (Math.round(line / CANVAS_WIDTH) === 127) {
+      // console.log('---->', cu, cv, '|', u1, u2, '|', v1, v2, '|', du, dv, '*', factor, '(', step, ')')
+      console.log('---->', x, '\t', Math.round(fixedToFloat(u)), '\t', fixedToFloat(u))
+    }
 
-    const t = (cu + cv * wide) * 4
+    const t = (Math.round(fixedToFloat(u)) + Math.round(fixedToFloat(v)) * wide) * 4
 
     const r = src[t]
     const g = src[t + 1]
@@ -708,7 +745,8 @@ function texspan2d(pixels, image, x1, u1, v1, x2, u2, v2, line) {
     pixels[i + 1] = g
     pixels[i + 2] = b
 
-    factor += step
+    // factor += step
+    factorf += stepf
   }
 }
 
@@ -716,17 +754,17 @@ function texbetween2d(pixels, image,
   x1, y1, u1, v1, x2, y2, u2, v2,
   x3, y3, u3, v3, x4, y4, u4, v4) {
 
-  if (y2 - y1 === 0) console.log('skip [a]')
-  if (y4 - y3 === 0) console.log('skip [b]')
-
   const e1dy = y2 - y1
   if (e1dy === 0) return
 
   const e2dy = y4 - y3
   if (e2dy === 0) return
 
-  const e1dx = x2 - x1
-  const e2dx = x4 - x3
+  // const e1dx = x2 - x1
+  // const e2dx = x4 - x3
+
+  const e1dx = (x2 - x1) << SHIFT
+  const e2dx = (x4 - x3) << SHIFT
 
   const e1du = u2 - u1
   const e1dv = v2 - v1
@@ -740,15 +778,11 @@ function texbetween2d(pixels, image,
   const step1 = 1.0 / e1dy
   const step2 = 1.0 / e2dy
 
-  // let fixedFactor1 = ((y3 - y1) << SHIFT) / (e1dy << SHIFT)
+  let factor1f = Math.floor(((y3 - y1) << SHIFT) / (e1dy << SHIFT) * SHIFT_UNIT)
+  let factor2f = 0
 
-  // const fixedStep1 = Math.floor((1 << SHIFT) / e1dy)
-  // const fixedStep2 = 1.0 / e2dy
-
-  const decimal = (fixedStep1 & SHIFT_MASK)
-  const fraction = decimal / (1 << SHIFT)
-
-  console.log('FLOAT', step1, 'FIXED', fixedStep1, 'NUMBER', (fixedStep1 >> SHIFT), 'DECIMAL', decimal, 'FRACTION', fraction)
+  const step1f = Math.floor((SHIFT_UNIT / (e1dy << SHIFT)) * SHIFT_UNIT)
+  const step2f = Math.floor((SHIFT_UNIT / (e2dy << SHIFT)) * SHIFT_UNIT)
 
   let y = Math.round(y3)
   if (y < 0) {
@@ -764,37 +798,43 @@ function texbetween2d(pixels, image,
 
   let line = y * CANVAS_WIDTH
 
-  // DEBUG
-  console.log(x1, y1, ',', x2, y2, ',', x3, y3, '|', e1du, e1dv, '|', e2du, e2dv, '/', factor1, factor2, '/', step1, step2)
+  x1 <<= SHIFT
+  x3 <<= SHIFT
 
   while (line < end) {
 
-    const su1 = u1 + e1du * factor1
-    const sv1 = v1 + e1dv * factor1
+    const su1 = u1 + Number((BigInt(e1du) * BigInt(factor1f)) >> SHIFT_BIG)
+    const sv1 = v1 + Number((BigInt(e1dv) * BigInt(factor1f)) >> SHIFT_BIG)
 
-    const su2 = u3 + e2du * factor2
-    const sv2 = v3 + e2dv * factor2
+    const su2 = u3 + Number((BigInt(e2du) * BigInt(factor2f)) >> SHIFT_BIG)
+    const sv2 = v3 + Number((BigInt(e2dv) * BigInt(factor2f)) >> SHIFT_BIG)
 
-    const sx1 = x1 + e1dx * factor1
-    const sx2 = x3 + e2dx * factor2
+    const sx1 = x1 + Number((BigInt(e1dx) * BigInt(factor1f)) >> SHIFT_BIG)
+    const sx2 = x3 + Number((BigInt(e2dx) * BigInt(factor2f)) >> SHIFT_BIG)
 
-    // ----> 2 | 2.5                2.5
-    // ----> 2 | 2.9999999999999996 2.9999999999999996
-    // ----> 3 | 3.4999999999999996 3.4999999999999996
-    // ----> 4 | 4                  4
-    // ----> 4 | 4.5                4.5
+    // const su1 = u1 + e1du * factor1
+    // const sv1 = v1 + e1dv * factor1
+
+    // const su2 = u3 + e2du * factor2
+    // const sv2 = v3 + e2dv * factor2
+
+    // const sx1 = x1 + e1dx * factor1
+    // const sx2 = x3 + e2dx * factor2
 
     if (sx1 < sx2) {
       texspan2d(pixels, image, sx1, su1, sv1, sx2, su2, sv2, line)
     } else {
-      if (line < (y + 20) * CANVAS_WIDTH) {
-        console.log('->', sx2, su2, sv2, ',', sx1, su1, sv1)
-      }
+      // if (line < (y + 20) * CANVAS_WIDTH) {
+      // console.log(fixedToFloat(sx1), fixedToFloat(sx2), '|', 'u1:', fixedToFloat(u1), 'u2:', fixedToFloat(u2))
+      // }
       texspan2d(pixels, image, sx2, su2, sv2, sx1, su1, sv1, line)
     }
 
     factor1 += step1
     factor2 += step2
+
+    factor1f += step1f
+    factor2f += step2f
 
     line += CANVAS_WIDTH
   }
