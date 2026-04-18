@@ -23,6 +23,7 @@ function touchIndexById(identifier) {
 }
 
 function tick(time) {
+  // if (ACTIVE) {
   if (ACTIVE && time - PREVIOUS_TICK >= 15.999) {
     PREVIOUS_TICK = time
 

@@ -1,5 +1,7 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
+echo -n "!# "
+basename "$0"
 
 temp='temp'
 

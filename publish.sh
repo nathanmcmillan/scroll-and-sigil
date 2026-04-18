@@ -1,5 +1,7 @@
 #!/bin/bash
 set -euo pipefail
+echo -n "!# "
+basename "$0"
 
 directory='../scroll-and-sigil-website'
 
