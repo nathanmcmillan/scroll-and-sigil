@@ -60,6 +60,18 @@ export function line2d(pixels, x1, y1, r1, g1, b1, x2, y2, r2, g2, b2) {
   }
 }
 
+export function clear2d(pixels, x, y, w, h, r, g, b) {
+  for (; y < h; y++) {
+    let i = (x + y * CANVAS_WIDTH) * 4
+    for (let c = 0; c < w; c++) {
+      pixels[i] = r
+      pixels[i + 1] = g
+      pixels[i + 2] = b
+      i += 4
+    }
+  }
+}
+
 function span2d(pixels, x1, r1, g1, b1, x2, r2, g2, b2, line) {
   const dx = x2 - x1
   if (dx === 0) return

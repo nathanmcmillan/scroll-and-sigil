@@ -7,7 +7,8 @@ import * as images from './images.js'
 import * as render from './render.js'
 import * as tiles from './tiles.js'
 import * as event from './event.js'
-import { triangle2d } from './triangle.js'
+import { parseWad } from './wad.js'
+import { clear2d, triangle2d } from './triangle.js'
 import { mode2d, sprite2d, texture2d, floattexture2d, centrictexture2d, SHIFT } from './texture.js'
 import { Button } from './button.js'
 import {
@@ -27,10 +28,16 @@ let SCREEN_CONTEXT = null
 let CANVAS = null
 let CONTEXT = null
 
+let BUFFER = null
+let PIXELS = null
+
 let LISTEN = null
 
-let _EVENT = null
-const _TIME = null
+let MOUSE_X = 0
+let MOUSE_Y = 0
+let MOUSE_DOWN = false
+let START_MOUSE_X = 0
+let START_MOUSE_Y = 0
 
 const _SECTOR = null
 const COLUMNS = 0
@@ -38,12 +45,6 @@ const ROWS = 0
 const _TILES = null
 let MUSIC = null
 const EVENTS = null
-
-let MOUSE_X = 0
-let MOUSE_Y = 0
-let MOUSE_DOWN = false
-let START_MOUSE_X = 0
-let START_MOUSE_Y = 0
 
 let X = 0
 let Y = 0
@@ -53,6 +54,8 @@ let START_Y = 0
 const TRAVEL_BUTTON = new Button()
 
 const BUTTONS = [TRAVEL_BUTTON]
+
+let ROTATION = 0.0
 
 function keyEvent(_code, _down) {
   // console.debug(code, down)
@@ -64,6 +67,14 @@ export function keyUp(event) {
 
 export function keyDown(event) {
   keyEvent(event.code, true)
+  switch (event.code) {
+    case 'ArrowLeft':
+      ROTATION -= 0.2
+      break
+    case 'ArrowRight':
+      ROTATION += 0.2
+      break
+  }
 }
 
 export async function mouseUp(event) {
@@ -177,6 +188,9 @@ export async function init(scale, screen) {
   setCanvasWidth(CANVAS.width)
   setCanvasHeight(CANVAS.height)
 
+  BUFFER = CONTEXT.getImageData(0, 0, CANVAS.width, CANVAS.height)
+  PIXELS = BUFFER.data
+
   const tilesImage = images.load('tiles', './images/tiles.png')
   const monstersImage = images.load('monsters', './images/monsters.png')
   const interfaceImage = images.load('interface', './images/interface.png')
@@ -189,20 +203,9 @@ export async function init(scale, screen) {
   TRAVEL_BUTTON.spriteX = 10
   TRAVEL_BUTTON.spriteY = 10
 
-  _EVENT = null
-  // TIME = online.time
+  const home = parseWad(await net.requestText('./world/home.txt'))
 
-  const home = JSON.parse(await net.requestText('./world/home.json'))
-
-  // const sector = online.sector
-
-  // SECTOR = sector.name
-  // COLUMNS = sector.columns
-  // ROWS = sector.rows
-  // TILES = sector.tiles
-  // MUSIC = sector.music
-  // EVENTS = sector.events
-  MUSIC = home.music
+  MUSIC = home.get('music')
 
   await tilesImage
   await monstersImage
@@ -220,18 +223,44 @@ export async function init(scale, screen) {
 
 export function update() { }
 
-const PERFORMANCE = false
-
-const _rotation = 0.0
+const PERFORMANCE = true
 
 export function draw() {
-  const canvas = CANVAS
-  const context = CONTEXT
 
-  context.clearRect(0, 0, canvas.width, canvas.height)
+  const pixels = PIXELS
+
+  clear2d(pixels, 0, 0, 300, 200, 100, 149, 237)
 
   // const font = images.IMAGES.get('font')
   // const image = images.IMAGES.get('tiles')
+  const tiles = images.IMAGE_PIXELS.get('tiles')
+
+  // const sr = 16
+  // const sb = 24
+
+  const sl = 0
+  const st = 0
+  const sr = 16 << SHIFT
+  const sb = 24 << SHIFT
+
+  if (PERFORMANCE) {
+    for (let p = 0; p < 20 * 16; p += 16) {
+      for (let f = 0; f < 20 * 24; f += 24) {
+        // 40,000 triangles
+        // top:     77
+        // current: 85
+        // triangle2d(pixels, p, f, 255, 0, 0, p + 16, f, 0, 255, 0, p + 16, f + 24, 0, 0, 255)
+
+        // 4 - 15 ms
+        // texture2d(pixels, tiles, p, f, sl, st, p + 16, f, sr, st, p + 16, f + 24, sl, sb)
+
+        floattexture2d(pixels, tiles, p, f, 0.0, 0.0, p + 16, f, 16.0, 0.0, p + 16, f + 24, 0.0, 24.0)
+      }
+    }
+    CONTEXT.putImageData(BUFFER, 0, 0)
+    SCREEN_CONTEXT.drawImage(CANVAS, 0, 0, CANVAS.width, CANVAS.height, 0, 0, SCREEN.width, SCREEN.height)
+    return
+  }
 
   // for (let r = 0; r < ROWS; r++) {
   //   for (let c = 0; c < COLUMNS; c++) {
@@ -256,61 +285,35 @@ export function draw() {
   // const buttons = images.IMAGES.get('interface')
   // drawButton(context, buttons, TRAVEL_BUTTON)
 
-  const buffer = context.getImageData(0, 0, canvas.width, canvas.height)
-  const pixels = buffer.data
-
-  if (PERFORMANCE) {
-    for (let p = 0; p < 200; p++) {
-      for (let f = 0; f < 200; f++) {
-        // 40,000 triangles
-        // top:     77
-        // current: 85
-        triangle2d(pixels, p, f, 255, 0, 0, p + 16, f, 0, 255, 0, p + 16, f + 24, 0, 0, 255)
-      }
-    }
-  }
-
-  triangle2d(pixels, 0, 0, 100, 149, 237, 300, 0, 100, 149, 237, 300, 200, 100, 149, 237)
-  triangle2d(pixels, 0, 0, 100, 149, 237, 0, 200, 100, 149, 237, 300, 200, 100, 149, 237)
-
   // triangle2d(pixels, 20, 60, 255, 0, 0, 50, 80, 255, 255, 0, 30, 90, 255, 0, 255)
 
-  const tiles = images.IMAGE_PIXELS.get('tiles')
-  sprite2d(pixels, 20, 120, tiles, 0, 0, 16, 24)
+  // sprite2d(pixels, 20, 120, tiles, 0, 0, 16, 24)
 
   // triangle2d(pixels, 80, 120, 255, 0, 0, 96, 120, 0, 255, 0, 96, 144, 0, 0, 255)
-
-  // const sr = 16
-  // const sb = 24
-
-  const sl = 0
-  const st = 0
-  const sr = 16 << SHIFT
-  const sb = 24 << SHIFT
-
-  // const sl = floatToFixed(0.5)
-  // const st = floatToFixed(0.5)
-  // const sr = floatToFixed(16.5)
-  // const sb = floatToFixed(24.5)
 
   // mode2d(pixels, tiles, 50, 120, 66, 120, 50, 144, 66, 144, 0.0, 0.0, sr, sb)
 
   // texture2d(pixels, tiles, 66, 150, 0.0, 0.0, 66, 166, sr, 0.0, 42, 166, sr, sb)
   // texture2d(pixels, tiles, 66, 150, 0.0, 0.0, 42, 166, sr, sb, 42, 150, 0.0, sb)
 
-  // console.log('------------------------------')
   // mode2d(pixels, tiles, 200, 120, 232, 120, 200, 168, 232, 168, 0, 0, sr, sb)
 
-  texture2d(pixels, tiles, 200, 120, sl, st, 232, 120, sr, st, 200, 168, sl, sb)
-  texture2d(pixels, tiles, 232, 120, sr, st, 232, 168, sr, sb, 200, 168, sl, sb)
+  // if (++poop % 2 == 0) {
+  //   texture2d(pixels, tiles, 200, 120, sl, st, 232, 120, sr, st, 200, 168, sl, sb)
+  //   texture2d(pixels, tiles, 232, 120, sr, st, 232, 168, sr, sb, 200, 168, sl, sb)
+  // } else {
+  //   floattexture2d(pixels, tiles, 200, 120, 0.0, 0.0, 232, 120, 16.0, 0.0, 200, 168, 0.0, 24.0)
+  //   floattexture2d(pixels, tiles, 232, 120, 16.0, 0.0, 232, 168, 16.0, 24.0, 200, 168, 0.0, 24.0)
+  // }
 
-  floattexture2d(pixels, tiles, 120, 120, 0.0, 0.0, 152, 120, 16.0, 0.0, 120, 168, 0.0, 24.0)
-  floattexture2d(pixels, tiles, 152, 120, 16.0, 0.0, 152, 168, 16.0, 24.0, 120, 168, 0.0, 24.0)
+  // BARTCENTRIC TEXTURE
 
-  centrictexture2d(pixels, tiles, 80, 120, 0.0, 0.0, 112, 120, 16.0, 0.0, 80, 168, 0.0, 24.0)
-  centrictexture2d(pixels, tiles, 112, 120, 16.0, 0.0, 112, 168, 16.0, 24.0, 80, 168, 0.0, 24.0)
+  // centrictexture2d(pixels, tiles, 80, 120, 0.0, 0.0, 112, 120, 16.0, 0.0, 80, 168, 0.0, 24.0)
+  // centrictexture2d(pixels, tiles, 112, 120, 16.0, 0.0, 112, 168, 16.0, 24.0, 80, 168, 0.0, 24.0)
 
-  // rotation += 3.1415 / 128.0
+  // ROTATION TEST
+
+  // const rotation = ROTATION
 
   // const cx = 100
   // const cy = 60
@@ -354,13 +357,8 @@ export function draw() {
 
   // mode2d(pixels, tiles, tlx, tly, trx, trh, blx, bly, brx, bry, 0, 0, sr, sb)
 
-  blit(context, buffer)
-
+  CONTEXT.putImageData(BUFFER, 0, 0)
   SCREEN_CONTEXT.drawImage(CANVAS, 0, 0, CANVAS.width, CANVAS.height, 0, 0, SCREEN.width, SCREEN.height)
-}
-
-function blit(context, buffer) {
-  context.putImageData(buffer, 0, 0)
 }
 
 function _drawButton(context, image, button) {
