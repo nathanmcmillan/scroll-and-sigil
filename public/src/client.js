@@ -48,8 +48,8 @@ let TILES = null
 
 let MUSIC = null
 
-let HERO_X = 0
-let HERO_Y = 0
+let HERO_X = 0.0
+let HERO_Y = 0.0
 
 let GOTO_X = 0
 let GOTO_Y = 0
@@ -118,7 +118,7 @@ export function keyDown(event) {
   }
 }
 
-export async function mouseUp(mouse) {}
+export async function mouseUp(mouse) { }
 
 export function mouseDown(mouse) {
   if (mouse.button !== 0) return
@@ -127,7 +127,7 @@ export function mouseDown(mouse) {
   CLICK_Y = mouse.clientY - Math.floor(bound.top)
 }
 
-export function mouseMove(mouse) {}
+export function mouseMove(mouse) { }
 
 export function touchStart(touch) {
   const x = touch.pageX
@@ -135,9 +135,9 @@ export function touchStart(touch) {
   console.debug('touch', x, y)
 }
 
-export function touchEnd() {}
+export function touchEnd() { }
 
-export function touchMove() {}
+export function touchMove() { }
 
 export function pause() {
   if (LISTEN) LISTEN.pause()
@@ -146,7 +146,7 @@ export function pause() {
 export function resume() {
   if (LISTEN) {
     const promise = LISTEN.play()
-    if (promise) promise.then(() => {}).catch(() => {})
+    if (promise) promise.then(() => { }).catch(() => { })
   }
 }
 
@@ -221,20 +221,41 @@ export async function init(scale, screen) {
 }
 
 export function update() {
-  // if (MOVE_LEFT) HERO_X -= 1
-  // if (MOVE_RIGHT) HERO_X += 1
-  // if (MOVE_UP) HERO_Y -= 1
-  // if (MOVE_DOWN) HERO_Y += 1
-  const move = 1
-  if (GOTO_X !== 0) {
-    if (HERO_X < GOTO_X) HERO_X += move
-    else if (HERO_X > GOTO_X) HERO_X -= move
-    else GOTO_X = 0
+
+  if (CLICK_X > 0 && CLICK_Y > 0) {
+    const x = CLICK_X / SCALE - CANVAS_WIDTH_HALF
+    const y = CLICK_Y / SCALE - CANVAS_HEIGHT_HALF
+
+    CLICK_X = 0
+    CLICK_Y = 0
+
+    const negative = -ROTATION
+    const sin = Math.sin(negative)
+    const cos = Math.cos(negative)
+
+    const c = Math.floor((x * cos - y * sin + HERO_X) / TILE_WIDTH)
+    const r = Math.floor((x * sin + y * cos + HERO_Y) / TILE_HEIGHT)
+
+    if (c >= 0 && r >= 0) {
+      GOTO_X = Math.round((c + 0.5) * TILE_WIDTH)
+      GOTO_Y = Math.round((r + 0.5) * TILE_HEIGHT)
+    }
   }
-  if (GOTO_Y !== 0) {
-    if (HERO_Y < GOTO_Y) HERO_Y += move
-    else if (HERO_Y > GOTO_Y) HERO_Y -= move
-    else GOTO_Y = 0
+
+  if (GOTO_X !== 0 || GOTO_Y !== 0) {
+    const move = 1
+    const y = GOTO_Y - HERO_Y
+    const x = GOTO_X - HERO_X
+    if (Math.abs(y) <= move && Math.abs(x) <= move) {
+      HERO_X = GOTO_X
+      HERO_Y = GOTO_Y
+      GOTO_X = 0
+      GOTO_Y = 0
+    } else {
+      const atan = Math.atan2(y, x)
+      HERO_X += move * Math.cos(atan)
+      HERO_Y += move * Math.sin(atan)
+    }
   }
 
   if (ROTATE_LEFT) ROTATION -= ROTATE
@@ -272,47 +293,15 @@ export function draw() {
     return
   }
 
-  if (CLICK_X > 0 || CLICK_Y > 0) {
-    let x = CLICK_X
-    let y = CLICK_Y
-    CLICK_X = 0
-    CLICK_Y = 0
-    console.log('----------------------------------------')
-    console.log('click [S]', x, y, SCALE, TILE_WIDTH, TILE_HEIGHT)
-
-    x = Math.floor(x / SCALE) - CANVAS_WIDTH_HALF
-    y = Math.floor(y / SCALE) - CANVAS_HEIGHT_HALF
-    console.log('click [T]', x, y)
-
-    const negative = -ROTATION
-    const sin = Math.sin(negative)
-    const cos = Math.cos(negative)
-
-    let c = Math.round(x * cos - y * sin)
-    let r = Math.round(x * sin + y * cos)
-
-    c += HERO_X
-    r += HERO_Y
-
-    console.log('click [3]', c, r)
-
-    c = Math.floor(c / TILE_WIDTH)
-    r = Math.floor(r / TILE_HEIGHT)
-
-    console.log('click [F]', c, r)
-
-    if (c >= 0 && r >= 0) {
-      GOTO_X = c * TILE_WIDTH
-      GOTO_Y = r * TILE_HEIGHT
-    }
-  }
-
   const halfPI = Math.PI / 2.0
   const oneAndHalfPI = Math.PI * 1.5
 
   const rotation = ROTATION
   const sin = Math.sin(rotation)
   const cos = Math.cos(rotation)
+
+  const heroX = Math.floor(HERO_X)
+  const heroY = Math.floor(HERO_Y)
 
   // console.log(rotation)
 
@@ -329,8 +318,8 @@ export function draw() {
     while (true) {
       const tile = TILES[r][c]
 
-      const left = c * TILE_WIDTH - HERO_X
-      const top = r * TILE_HEIGHT - HERO_Y
+      const left = c * TILE_WIDTH - heroX
+      const top = r * TILE_HEIGHT - heroY
       const right = left + TILE_WIDTH
       const bottom = top + TILE_HEIGHT
 
