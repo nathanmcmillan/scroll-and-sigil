@@ -9,7 +9,7 @@ const TOUCH = []
 let ACTIVE = true
 let PREVIOUS_TICK = 0
 
-const PERFORMANCE = true
+const PERFORMANCE = false
 
 let performanceLow = Number.MAX_VALUE
 let performanceHigh = -Number.MAX_VALUE

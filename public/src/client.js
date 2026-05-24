@@ -305,6 +305,10 @@ export function draw() {
   const sin = Math.sin(rotation)
   const cos = Math.cos(rotation)
 
+  const negative = -rotation
+  const negativeSin = Math.sin(negative)
+  const negativeCos = Math.cos(negative)
+
   const heroX = Math.floor(HERO_X)
   const heroY = Math.floor(HERO_Y)
 
@@ -315,16 +319,43 @@ export function draw() {
   // const drawBack =
   // const drawRight = (rotation > 0.0 && rotation < Math.PI) || rotation < -Math.PI
 
-  const lowRow = 0
-  const highRow = ROWS - 1
+  const canvasLeft = -canvasHalfWidth
+  const canvasTop = -canvasHalfHeight
 
-  const lowColumn = 0
-  const highColumn = COLUMNS - 1
+  const canvasRight = canvasHalfWidth
+  const canvasBottom = canvasHalfHeight
+
+  const canvasWorldTLC = Math.floor((canvasLeft * negativeCos - canvasTop * negativeSin + HERO_X) / TILE_WIDTH)
+  const canvasWorldTLR = Math.floor((canvasLeft * negativeSin + canvasTop * negativeCos + HERO_Y) / TILE_HEIGHT)
+
+  const canvasWorldTRC = Math.floor((canvasRight * negativeCos - canvasTop * negativeSin + HERO_X) / TILE_WIDTH)
+  const canvasWorldTRR = Math.floor((canvasRight * negativeSin + canvasTop * negativeCos + HERO_Y) / TILE_HEIGHT)
+
+  const canvasWorldBLC = Math.floor((canvasLeft * negativeCos - canvasBottom * negativeSin + HERO_X) / TILE_WIDTH)
+  const canvasWorldBLR = Math.floor((canvasLeft * negativeSin + canvasBottom * negativeCos + HERO_Y) / TILE_HEIGHT)
+
+  const canvasWorldBRC = Math.floor((canvasRight * negativeCos - canvasBottom * negativeSin + HERO_X) / TILE_WIDTH)
+  const canvasWorldBRR = Math.floor((canvasRight * negativeSin + canvasBottom * negativeCos + HERO_Y) / TILE_HEIGHT)
+
+  const lowRow = Math.max(0, Math.min(canvasWorldTLR, canvasWorldTRR, canvasWorldBLR, canvasWorldBRR))
+  const highRow = Math.min(ROWS - 1, Math.max(canvasWorldTLR, canvasWorldTRR, canvasWorldBLR, canvasWorldBRR))
+
+  const lowColumn = Math.max(0, Math.min(canvasWorldTLC, canvasWorldTRC, canvasWorldBLC, canvasWorldBRC))
+  const highColumn = Math.min(COLUMNS - 1, Math.max(canvasWorldTLC, canvasWorldTRC, canvasWorldBLC, canvasWorldBRC))
 
   let r = drawFront ? lowRow : highRow
 
   let top = r * TILE_HEIGHT - heroY
   let bottom = top + TILE_HEIGHT
+
+  let tlx = 0
+  let tly = 0
+  let trx = 0
+  let trh = 0
+  let blx = 0
+  let bly = 0
+  let brx = 0
+  let bry = 0
 
   while (true) {
     let c = drawLeft ? highColumn : lowColumn
@@ -340,32 +371,39 @@ export function draw() {
           if (c < lowColumn) break
           right = left
           left -= TILE_WIDTH
+          trx = tlx
+          trh = tly
+          brx = blx
+          bry = bly
+          tlx = Math.round(left * cos - top * sin) + canvasHalfWidth
+          tly = Math.round(left * sin + top * cos) + canvasHalfHeight
+          blx = Math.round(left * cos - bottom * sin) + canvasHalfWidth
+          bly = Math.round(left * sin + bottom * cos) + canvasHalfHeight
         } else {
           c++
           if (c > highColumn) break
           left = right
           right += TILE_WIDTH
+          tlx = trx
+          tly = trh
+          blx = brx
+          bly = bry
+          trx = Math.round(right * cos - top * sin) + canvasHalfWidth
+          trh = Math.round(right * sin + top * cos) + canvasHalfHeight
+          brx = Math.round(right * cos - bottom * sin) + canvasHalfWidth
+          bry = Math.round(right * sin + bottom * cos) + canvasHalfHeight
         }
       } else {
         increment = true
+        tlx = Math.round(left * cos - top * sin) + canvasHalfWidth
+        tly = Math.round(left * sin + top * cos) + canvasHalfHeight
+        trx = Math.round(right * cos - top * sin) + canvasHalfWidth
+        trh = Math.round(right * sin + top * cos) + canvasHalfHeight
+        blx = Math.round(left * cos - bottom * sin) + canvasHalfWidth
+        bly = Math.round(left * sin + bottom * cos) + canvasHalfHeight
+        brx = Math.round(right * cos - bottom * sin) + canvasHalfWidth
+        bry = Math.round(right * sin + bottom * cos) + canvasHalfHeight
       }
-
-      // const left = c * TILE_WIDTH - heroX
-      // const top = r * TILE_HEIGHT - heroY
-      // const right = left + TILE_WIDTH
-      // const bottom = top + TILE_HEIGHT
-
-      const tlx = Math.round(left * cos - top * sin) + canvasHalfWidth
-      const tly = Math.round(left * sin + top * cos) + canvasHalfHeight
-
-      const trx = Math.round(right * cos - top * sin) + canvasHalfWidth
-      const trh = Math.round(right * sin + top * cos) + canvasHalfHeight
-
-      const blx = Math.round(left * cos - bottom * sin) + canvasHalfWidth
-      const bly = Math.round(left * sin + bottom * cos) + canvasHalfHeight
-
-      const brx = Math.round(right * cos - bottom * sin) + canvasHalfWidth
-      const bry = Math.round(right * sin + bottom * cos) + canvasHalfHeight
 
       if (tlx < 0) {
         if (trx < 0 && blx < 0 && brx < 0) continue
