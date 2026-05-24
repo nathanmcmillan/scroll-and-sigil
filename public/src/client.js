@@ -118,7 +118,7 @@ export function keyDown(event) {
   }
 }
 
-export async function mouseUp(mouse) { }
+export async function mouseUp(mouse) {}
 
 export function mouseDown(mouse) {
   if (mouse.button !== 0) return
@@ -127,7 +127,7 @@ export function mouseDown(mouse) {
   CLICK_Y = mouse.clientY - Math.floor(bound.top)
 }
 
-export function mouseMove(mouse) { }
+export function mouseMove(mouse) {}
 
 export function touchStart(touch) {
   const x = touch.pageX
@@ -135,9 +135,9 @@ export function touchStart(touch) {
   console.debug('touch', x, y)
 }
 
-export function touchEnd() { }
+export function touchEnd() {}
 
-export function touchMove() { }
+export function touchMove() {}
 
 export function pause() {
   if (LISTEN) LISTEN.pause()
@@ -146,7 +146,7 @@ export function pause() {
 export function resume() {
   if (LISTEN) {
     const promise = LISTEN.play()
-    if (promise) promise.then(() => { }).catch(() => { })
+    if (promise) promise.then(() => {}).catch(() => {})
   }
 }
 
@@ -221,7 +221,6 @@ export async function init(scale, screen) {
 }
 
 export function update() {
-
   if (CLICK_X > 0 && CLICK_Y > 0) {
     const x = CLICK_X / SCALE - CANVAS_WIDTH_HALF
     const y = CLICK_Y / SCALE - CANVAS_HEIGHT_HALF
@@ -296,6 +295,12 @@ export function draw() {
   const halfPI = Math.PI / 2.0
   const oneAndHalfPI = Math.PI * 1.5
 
+  const canvasWidth = CANVAS_WIDTH
+  const canvasHeight = CANVAS_HEIGHT
+
+  const canvasHalfWidth = CANVAS_WIDTH_HALF
+  const canvasHalfHeight = CANVAS_HEIGHT_HALF
+
   const rotation = ROTATION
   const sin = Math.sin(rotation)
   const cos = Math.cos(rotation)
@@ -310,30 +315,71 @@ export function draw() {
   // const drawBack =
   // const drawRight = (rotation > 0.0 && rotation < Math.PI) || rotation < -Math.PI
 
-  let r = drawFront ? 0 : ROWS - 1
+  const lowRow = 0
+  const highRow = ROWS - 1
+
+  const lowColumn = 0
+  const highColumn = COLUMNS - 1
+
+  let r = drawFront ? lowRow : highRow
+
+  let top = r * TILE_HEIGHT - heroY
+  let bottom = top + TILE_HEIGHT
 
   while (true) {
-    let c = drawLeft ? COLUMNS - 1 : 0
+    let c = drawLeft ? highColumn : lowColumn
+    let increment = false
+
+    let left = c * TILE_WIDTH - heroX
+    let right = left + TILE_WIDTH
 
     while (true) {
+      if (increment) {
+        if (drawLeft) {
+          c--
+          if (c < lowColumn) break
+          right = left
+          left -= TILE_WIDTH
+        } else {
+          c++
+          if (c > highColumn) break
+          left = right
+          right += TILE_WIDTH
+        }
+      } else {
+        increment = true
+      }
+
+      // const left = c * TILE_WIDTH - heroX
+      // const top = r * TILE_HEIGHT - heroY
+      // const right = left + TILE_WIDTH
+      // const bottom = top + TILE_HEIGHT
+
+      const tlx = Math.round(left * cos - top * sin) + canvasHalfWidth
+      const tly = Math.round(left * sin + top * cos) + canvasHalfHeight
+
+      const trx = Math.round(right * cos - top * sin) + canvasHalfWidth
+      const trh = Math.round(right * sin + top * cos) + canvasHalfHeight
+
+      const blx = Math.round(left * cos - bottom * sin) + canvasHalfWidth
+      const bly = Math.round(left * sin + bottom * cos) + canvasHalfHeight
+
+      const brx = Math.round(right * cos - bottom * sin) + canvasHalfWidth
+      const bry = Math.round(right * sin + bottom * cos) + canvasHalfHeight
+
+      if (tlx < 0) {
+        if (trx < 0 && blx < 0 && brx < 0) continue
+      } else if (tlx > canvasWidth) {
+        if (trx > canvasWidth && blx > canvasWidth && brx > canvasWidth) continue
+      }
+
+      if (tly < 0) {
+        if (trh < 0 && bly < 0 && bry < 0) continue
+      } else if (tly > canvasHeight) {
+        if (trh > canvasHeight && bly > canvasHeight && bry > canvasHeight) continue
+      }
+
       const tile = TILES[r][c]
-
-      const left = c * TILE_WIDTH - heroX
-      const top = r * TILE_HEIGHT - heroY
-      const right = left + TILE_WIDTH
-      const bottom = top + TILE_HEIGHT
-
-      const tlx = Math.round(left * cos - top * sin) + CANVAS_WIDTH_HALF
-      const tly = Math.round(left * sin + top * cos) + CANVAS_HEIGHT_HALF
-
-      const trx = Math.round(right * cos - top * sin) + CANVAS_WIDTH_HALF
-      const trh = Math.round(right * sin + top * cos) + CANVAS_HEIGHT_HALF
-
-      const blx = Math.round(left * cos - bottom * sin) + CANVAS_WIDTH_HALF
-      const bly = Math.round(left * sin + bottom * cos) + CANVAS_HEIGHT_HALF
-
-      const brx = Math.round(right * cos - bottom * sin) + CANVAS_WIDTH_HALF
-      const bry = Math.round(right * sin + bottom * cos) + CANVAS_HEIGHT_HALF
 
       const color = FLOOR_COLOR[tile]
 
@@ -396,18 +442,30 @@ export function draw() {
 
           if (drawFront) {
             // FRONT
-            mode2d(pixels, tiles, blx, cbly, brx, cbry, blx, bly, brx, bry, spritel, spritet, spriter, spriteb)
+            const draw = r + 1 < ROWS ? SIDE_SPRITES[TILES[r + 1][c]] === null : true
+            if (draw) {
+              mode2d(pixels, tiles, blx, cbly, brx, cbry, blx, bly, brx, bry, spritel, spritet, spriter, spriteb)
+            }
           } else {
             // BACK
-            mode2d(pixels, tiles, trx, ctrh, tlx, ctly, trx, trh, tlx, tly, spritel, spritet, spriter, spriteb)
+            const draw = r - 1 >= 0 ? SIDE_SPRITES[TILES[r - 1][c]] === null : true
+            if (draw) {
+              mode2d(pixels, tiles, trx, ctrh, tlx, ctly, trx, trh, tlx, tly, spritel, spritet, spriter, spriteb)
+            }
           }
 
           if (drawLeft) {
             // LEFT
-            mode2d(pixels, tiles, tlx, ctly, blx, cbly, tlx, tly, blx, bly, spritel, spritet, spriter, spriteb)
+            const draw = c - 1 >= 0 ? SIDE_SPRITES[TILES[r][c - 1]] === null : true
+            if (draw) {
+              mode2d(pixels, tiles, tlx, ctly, blx, cbly, tlx, tly, blx, bly, spritel, spritet, spriter, spriteb)
+            }
           } else {
             // RIGHT
-            mode2d(pixels, tiles, brx, cbry, trx, ctrh, brx, bry, trx, trh, spritel, spritet, spriter, spriteb)
+            const draw = c + 1 < COLUMNS ? SIDE_SPRITES[TILES[r][c + 1]] === null : true
+            if (draw) {
+              mode2d(pixels, tiles, brx, cbry, trx, ctrh, brx, bry, trx, trh, spritel, spritet, spriter, spriteb)
+            }
           }
         }
 
@@ -421,22 +479,18 @@ export function draw() {
           mode2d(pixels, tiles, tlx, ctly, trx, ctrh, blx, cbly, brx, cbry, spritel, spritet, spriter, spriteb)
         }
       }
-
-      if (drawLeft) {
-        c--
-        if (c < 0) break
-      } else {
-        c++
-        if (c >= COLUMNS) break
-      }
     }
 
     if (drawFront) {
       r++
-      if (r >= ROWS) break
+      if (r > highRow) break
+      top = bottom
+      bottom += TILE_HEIGHT
     } else {
       r--
-      if (r < 0) break
+      if (r < lowRow) break
+      bottom = top
+      top -= TILE_HEIGHT
     }
   }
 
@@ -444,8 +498,8 @@ export function draw() {
   const scale = 1 // SPRITE_SCALE
   sprite2d(
     pixels,
-    CANVAS_WIDTH_HALF - Math.floor((hero[2] * scale) / 2),
-    CANVAS_HEIGHT_HALF - hero[3] * scale,
+    canvasHalfWidth - Math.floor((hero[2] * scale) / 2),
+    canvasHalfHeight - hero[3] * scale,
     scale,
     monsters,
     hero[0],

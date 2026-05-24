@@ -18,7 +18,7 @@ const BRICK_WALL_STONE_GROUND = [112, 0, WIDE, TALL]
 
 // TODO: Top and side different textures
 
-export const FLOOR_SPRITES = [STONE_GROUND, null, BRICK_WALL_STONE_GROUND, null]
+export const FLOOR_SPRITES = [STONE_GROUND, null, null, null]
 
 export const SIDE_SPRITES = [null, BRICK_WALL, BRICK_WALL_STONE_GROUND, null]
 
