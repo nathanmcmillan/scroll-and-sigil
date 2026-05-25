@@ -6,6 +6,8 @@ import * as net from './net.js'
 import * as images from './images.js'
 import * as render from './render.js'
 import * as event from './event.js'
+import { Thing } from './thing.js'
+import { Hero } from './hero.js'
 import { parseWad } from './wad.js'
 import { clear2d, triangle2d } from './triangle.js'
 import { mode2d, image2d, sprite2d, texture2d, centrictexture2d } from './texture.js'
@@ -13,11 +15,14 @@ import {
   SPRITE_SCALE,
   TILE_WIDTH,
   TILE_HEIGHT,
-  FLOOR_COLOR,
+  ground,
   FLOOR_SPRITES,
   SIDE_SPRITES,
   CEIL_SPRITES,
   monsterSprite,
+  Tile,
+  tilePushThing,
+  tileRemoveThing,
 } from './tiles.js'
 import { Button } from './button.js'
 import {
@@ -48,8 +53,7 @@ let TILES = null
 
 let MUSIC = null
 
-let HERO_X = 0.0
-let HERO_Y = 0.0
+let HERO = null
 
 let GOTO_X = 0
 let GOTO_Y = 0
@@ -202,12 +206,48 @@ export async function init(scale, screen) {
 
   MUSIC = home.get('music')
 
-  TILES = home.get('tiles')
-  ROWS = TILES.length
-  COLUMNS = TILES[0].length
+  const tiles = home.get('tiles')
+  ROWS = tiles.length
+  COLUMNS = tiles[0].length
+  TILES = new Array(ROWS * COLUMNS)
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLUMNS; c++) {
+      const cell = tiles[r][c]
+      const tile = new Tile()
+      if (cell.constructor === Array) {
+        tile.floorColor = ground(cell)
+      } else {
+        tile.floorSprite = FLOOR_SPRITES[cell]
+        tile.sideSprite = SIDE_SPRITES[cell]
+        tile.ceilSprite = CEIL_SPRITES[cell]
+      }
+      TILES[r * COLUMNS + c] = tile
+    }
+  }
 
-  HERO_X = Math.floor((COLUMNS * TILE_WIDTH) / 2)
-  HERO_Y = Math.floor((ROWS * TILE_HEIGHT) / 2)
+  const things = home.get('things')
+  for (let t = 0; t < things.length; t++) {
+    const thing = things[t]
+    const c = thing.get('x')
+    const r = thing.get('y')
+    const tile = TILES[r * COLUMNS + c]
+    const x = (c + 0.5) * TILE_WIDTH
+    const y = (r + 0.5) * TILE_HEIGHT
+    switch (thing.get('id')) {
+      case 'hero':
+        if (HERO === null) HERO = new Hero()
+        HERO.x = x
+        HERO.y = y
+        tilePushThing(tile, HERO)
+        break
+      case 'rat':
+        const monster = new Thing()
+        monster.x = x
+        monster.y = y
+        tilePushThing(tile, monster)
+        break
+    }
+  }
 
   LISTEN = new Audio('./music/' + MUSIC + '.wav')
   LISTEN.loop = true
@@ -232,8 +272,8 @@ export function update() {
     const sin = Math.sin(negative)
     const cos = Math.cos(negative)
 
-    const c = Math.floor((x * cos - y * sin + HERO_X) / TILE_WIDTH)
-    const r = Math.floor((x * sin + y * cos + HERO_Y) / TILE_HEIGHT)
+    const c = Math.floor((x * cos - y * sin + HERO.x) / TILE_WIDTH)
+    const r = Math.floor((x * sin + y * cos + HERO.y) / TILE_HEIGHT)
 
     if (c >= 0 && r >= 0) {
       GOTO_X = Math.round((c + 0.5) * TILE_WIDTH)
@@ -243,17 +283,27 @@ export function update() {
 
   if (GOTO_X !== 0 || GOTO_Y !== 0) {
     const move = 1
-    const y = GOTO_Y - HERO_Y
-    const x = GOTO_X - HERO_X
-    if (Math.abs(y) <= move && Math.abs(x) <= move) {
-      HERO_X = GOTO_X
-      HERO_Y = GOTO_Y
+    const x = HERO.x
+    const y = HERO.y
+    const dy = GOTO_Y - y
+    const dx = GOTO_X - x
+    if (Math.abs(dy) <= move && Math.abs(dx) <= move) {
+      HERO.x = GOTO_X
+      HERO.y = GOTO_Y
       GOTO_X = 0
       GOTO_Y = 0
     } else {
-      const atan = Math.atan2(y, x)
-      HERO_X += move * Math.cos(atan)
-      HERO_Y += move * Math.sin(atan)
+      const atan = Math.atan2(dy, dx)
+      HERO.x = x + move * Math.cos(atan)
+      HERO.y = y + move * Math.sin(atan)
+    }
+    const oc = Math.floor(x / TILE_WIDTH)
+    const or = Math.floor(y / TILE_HEIGHT)
+    const nc = Math.floor(HERO.x / TILE_WIDTH)
+    const nr = Math.floor(HERO.y / TILE_HEIGHT)
+    if (nc !== oc || nr !== or) {
+      tileRemoveThing(TILES[or * COLUMNS + oc], HERO)
+      tilePushThing(TILES[nr * COLUMNS + nc], HERO)
     }
   }
 
@@ -309,8 +359,8 @@ export function draw() {
   const negativeSin = Math.sin(negative)
   const negativeCos = Math.cos(negative)
 
-  const heroX = Math.floor(HERO_X)
-  const heroY = Math.floor(HERO_Y)
+  const heroX = Math.floor(HERO.x)
+  const heroY = Math.floor(HERO.y)
 
   // console.log(rotation)
 
@@ -319,23 +369,33 @@ export function draw() {
   // const drawBack =
   // const drawRight = (rotation > 0.0 && rotation < Math.PI) || rotation < -Math.PI
 
-  const canvasLeft = -canvasHalfWidth
-  const canvasTop = -canvasHalfHeight
+  const canvasWorldTLC = Math.floor(
+    (-canvasHalfWidth * negativeCos + canvasHalfHeight * negativeSin + heroX) / TILE_WIDTH,
+  )
+  const canvasWorldTLR = Math.floor(
+    (-canvasHalfWidth * negativeSin - canvasHalfHeight * negativeCos + heroY) / TILE_HEIGHT,
+  )
 
-  const canvasRight = canvasHalfWidth
-  const canvasBottom = canvasHalfHeight
+  const canvasWorldTRC = Math.floor(
+    (canvasHalfWidth * negativeCos + canvasHalfHeight * negativeSin + heroX) / TILE_WIDTH,
+  )
+  const canvasWorldTRR = Math.floor(
+    (canvasHalfWidth * negativeSin - canvasHalfHeight * negativeCos + heroY) / TILE_HEIGHT,
+  )
 
-  const canvasWorldTLC = Math.floor((canvasLeft * negativeCos - canvasTop * negativeSin + HERO_X) / TILE_WIDTH)
-  const canvasWorldTLR = Math.floor((canvasLeft * negativeSin + canvasTop * negativeCos + HERO_Y) / TILE_HEIGHT)
+  const canvasWorldBLC = Math.floor(
+    (-canvasHalfWidth * negativeCos - canvasHalfHeight * negativeSin + heroX) / TILE_WIDTH,
+  )
+  const canvasWorldBLR = Math.floor(
+    (-canvasHalfWidth * negativeSin + canvasHalfHeight * negativeCos + heroY) / TILE_HEIGHT,
+  )
 
-  const canvasWorldTRC = Math.floor((canvasRight * negativeCos - canvasTop * negativeSin + HERO_X) / TILE_WIDTH)
-  const canvasWorldTRR = Math.floor((canvasRight * negativeSin + canvasTop * negativeCos + HERO_Y) / TILE_HEIGHT)
-
-  const canvasWorldBLC = Math.floor((canvasLeft * negativeCos - canvasBottom * negativeSin + HERO_X) / TILE_WIDTH)
-  const canvasWorldBLR = Math.floor((canvasLeft * negativeSin + canvasBottom * negativeCos + HERO_Y) / TILE_HEIGHT)
-
-  const canvasWorldBRC = Math.floor((canvasRight * negativeCos - canvasBottom * negativeSin + HERO_X) / TILE_WIDTH)
-  const canvasWorldBRR = Math.floor((canvasRight * negativeSin + canvasBottom * negativeCos + HERO_Y) / TILE_HEIGHT)
+  const canvasWorldBRC = Math.floor(
+    (canvasHalfWidth * negativeCos - canvasHalfHeight * negativeSin + heroX) / TILE_WIDTH,
+  )
+  const canvasWorldBRR = Math.floor(
+    (canvasHalfWidth * negativeSin + canvasHalfHeight * negativeCos + heroY) / TILE_HEIGHT,
+  )
 
   const lowRow = Math.max(0, Math.min(canvasWorldTLR, canvasWorldTRR, canvasWorldBLR, canvasWorldBRR))
   const highRow = Math.min(ROWS - 1, Math.max(canvasWorldTLR, canvasWorldTRR, canvasWorldBLR, canvasWorldBRR))
@@ -358,6 +418,8 @@ export function draw() {
   let bry = 0
 
   while (true) {
+    const line = r * COLUMNS
+
     let c = drawLeft ? highColumn : lowColumn
     let increment = false
 
@@ -417,10 +479,9 @@ export function draw() {
         if (trh > canvasHeight && bly > canvasHeight && bry > canvasHeight) continue
       }
 
-      const tile = TILES[r][c]
+      const tile = TILES[line + c]
 
-      const color = FLOOR_COLOR[tile]
-
+      const color = tile.floorColor
       if (color !== null) {
         const rotate = color[0]
 
@@ -455,8 +516,9 @@ export function draw() {
           triangle2d(pixels, brx, bry, r1b, g1b, b1b, blx, bly, r2b, g2b, b2b, tlx, tly, r3b, g3b, b3b)
         }
       } else {
-        let sprite = FLOOR_SPRITES[tile]
+        let sprite = tile.floorSprite
         if (sprite !== null) {
+          console.log(tile, sprite, c, r)
           const spritel = sprite[0]
           const spritet = sprite[1]
           const spriter = spritel + sprite[2]
@@ -471,7 +533,7 @@ export function draw() {
         const cbly = bly - TILE_HEIGHT
         const cbry = bry - TILE_HEIGHT
 
-        sprite = SIDE_SPRITES[tile]
+        sprite = tile.sideSprite
         if (sprite !== null) {
           const spritel = sprite[0]
           const spritet = sprite[1]
@@ -480,13 +542,13 @@ export function draw() {
 
           if (drawFront) {
             // FRONT
-            const draw = r + 1 < ROWS ? SIDE_SPRITES[TILES[r + 1][c]] === null : true
+            const draw = r + 1 < ROWS ? TILES[line + COLUMNS + c].sideSprite === null : true
             if (draw) {
               mode2d(pixels, tiles, blx, cbly, brx, cbry, blx, bly, brx, bry, spritel, spritet, spriter, spriteb)
             }
           } else {
             // BACK
-            const draw = r - 1 >= 0 ? SIDE_SPRITES[TILES[r - 1][c]] === null : true
+            const draw = r - 1 >= 0 ? TILES[line - COLUMNS + c].sideSprite === null : true
             if (draw) {
               mode2d(pixels, tiles, trx, ctrh, tlx, ctly, trx, trh, tlx, tly, spritel, spritet, spriter, spriteb)
             }
@@ -494,20 +556,20 @@ export function draw() {
 
           if (drawLeft) {
             // LEFT
-            const draw = c - 1 >= 0 ? SIDE_SPRITES[TILES[r][c - 1]] === null : true
+            const draw = c - 1 >= 0 ? TILES[line + c - 1].sideSprite === null : true
             if (draw) {
               mode2d(pixels, tiles, tlx, ctly, blx, cbly, tlx, tly, blx, bly, spritel, spritet, spriter, spriteb)
             }
           } else {
             // RIGHT
-            const draw = c + 1 < COLUMNS ? SIDE_SPRITES[TILES[r][c + 1]] === null : true
+            const draw = c + 1 < COLUMNS ? TILES[line + c + 1].sideSprite === null : true
             if (draw) {
               mode2d(pixels, tiles, brx, cbry, trx, ctrh, brx, bry, trx, trh, spritel, spritet, spriter, spriteb)
             }
           }
         }
 
-        sprite = CEIL_SPRITES[tile]
+        sprite = tile.ceilSprite
         if (sprite !== null) {
           const spritel = sprite[0]
           const spritet = sprite[1]
@@ -515,6 +577,43 @@ export function draw() {
           const spriteb = spritet + sprite[3]
 
           mode2d(pixels, tiles, tlx, ctly, trx, ctrh, blx, cbly, brx, cbry, spritel, spritet, spriter, spriteb)
+        }
+      }
+
+      for (let t = 0; t < tile.thingCount; t++) {
+        const thing = tile.things[t]
+        if (thing === HERO) {
+          const hero = monsterSprite('hero')
+          const scale = 1 // SPRITE_SCALE
+          sprite2d(
+            pixels,
+            canvasHalfWidth - Math.floor((hero[2] * scale) / 2),
+            canvasHalfHeight - hero[3] * scale,
+            scale,
+            monsters,
+            hero[0],
+            hero[1],
+            hero[2],
+            hero[3],
+          )
+        } else {
+          const monster = monsterSprite('rat')
+          const scale = 1 // SPRITE_SCALE
+          const t = thing.x - heroX
+          const v = thing.y - heroY
+          const x = Math.round(t * cos - v * sin) + canvasHalfWidth
+          const y = Math.round(t * sin + v * cos) + canvasHalfHeight
+          sprite2d(
+            pixels,
+            x - Math.floor((monster[2] * scale) / 2),
+            y - monster[3] * scale,
+            scale,
+            monsters,
+            monster[0],
+            monster[1],
+            monster[2],
+            monster[3],
+          )
         }
       }
     }
@@ -531,38 +630,6 @@ export function draw() {
       top -= TILE_HEIGHT
     }
   }
-
-  const hero = monsterSprite('hero')
-  const scale = 1 // SPRITE_SCALE
-  sprite2d(
-    pixels,
-    canvasHalfWidth - Math.floor((hero[2] * scale) / 2),
-    canvasHalfHeight - hero[3] * scale,
-    scale,
-    monsters,
-    hero[0],
-    hero[1],
-    hero[2],
-    hero[3],
-  )
-
-  // const X = HERO_X - CANVAS_WIDTH_HALF
-  // const Y = HERO_Y - CANVAS_HEIGHT_HALF
-  // for (let r = 0; r < ROWS; r++) {
-  //   for (let c = 0; c < COLUMNS; c++) {
-  //     const sprite = TILE_SPRITES[TILES[r][c]]
-  //     image2d(
-  //       pixels,
-  //       c * TILE_WIDTH - X,
-  //       r * TILE_HEIGHT - Y,
-  //       tiles,
-  //       sprite[0],
-  //       sprite[1],
-  //       sprite[2],
-  //       sprite[3]
-  //     )
-  //   }
-  // }
 
   // image2d(pixels, 20, 120, tiles, 0, 0, 16, 24)
   // mode2d(pixels, tiles, 50, 120, 66, 120, 50, 144, 66, 144, 0.0, 0.0, sr, sb)
